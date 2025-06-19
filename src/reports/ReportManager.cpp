@@ -1,0 +1,1041 @@
+#include "ReportManager.h"
+#include "../database/DatabaseManager.h"
+#include "../core/VisitorManager.h"
+#include "../utils/ErrorHandler.h"
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QDir>
+#include <QStandardPaths>
+#include <QUuid>
+#include <QDebug>
+
+ReportManager* ReportManager::instance = nullptr;
+QMutex ReportManager::instanceMutex;
+
+ReportManager& ReportManager::getInstance()
+{
+    if (instance == nullptr) {
+        QMutexLocker locker(&instanceMutex);
+        if (instance == nullptr) {
+            instance = new ReportManager();
+        }
+    }
+    return *instance;
+}
+
+ReportManager::ReportManager(QObject *parent)
+    : QObject(parent)
+{
+}
+
+ReportManager::~ReportManager()
+{
+}
+
+ReportData ReportManager::generateReport(const ReportParameters& params)
+{
+    try {
+        validateReportParameters(params);
+        
+        ReportData report;
+        report.generatedAt = QDateTime::currentDateTime();
+        report.generatedBy = "system"; // TODO: Get current user
+        
+        switch (params.type) {
+            case ReportType::DailyVisitorLog:
+                report = generateDailyVisitorLog(params.startDate);
+                break;
+            case ReportType::CurrentVisitors:
+                report = generateCurrentVisitorsReport();
+                break;
+            case ReportType::VisitorFrequency:
+                report = generateVisitorFrequencyReport(params.startDate, params.endDate);
+                break;
+            case ReportType::PeakTimeAnalysis:
+                report = generatePeakTimeAnalysis(params.startDate, params.endDate);
+                break;
+            case ReportType::VisitDuration:
+                report = generateVisitDurationReport(params.startDate, params.endDate);
+                break;
+            case ReportType::CustomerStatistics:
+                report = generateCustomerStatisticsReport(params.startDate, params.endDate);
+                break;
+            case ReportType::SecurityIncidents:
+                report = generateSecurityIncidentsReport(params.startDate, params.endDate);
+                break;
+            case ReportType::ContractorTracking:
+                report = generateContractorTrackingReport(params.startDate, params.endDate);
+                break;
+            case ReportType::EmergencyEvacuation:
+                report = generateEmergencyEvacuationReport();
+                break;
+            case ReportType::ComplianceReport:
+                report = generateComplianceReport(params.startDate, params.endDate);
+                break;
+            default:
+                throw std::runtime_error("Unsupported report type");
+        }
+        
+        report.title = formatReportTitle(params.type, params.startDate, params.endDate);
+        report.summary = calculateSummary(report.data);
+        
+        if (params.includeCharts) {
+            addChartsToReport(report);
+        }
+        
+        saveReportToDatabase(report);
+        emit reportGenerated(report);
+        
+        return report;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to generate report: %1").arg(e.what());
+        LOG_ERROR(errorMsg, ErrorCategory::System);
+        emit reportGenerationFailed(errorMsg);
+        
+        ReportData emptyReport;
+        return emptyReport;
+    }
+}
+
+bool ReportManager::generateAndSaveReport(const ReportParameters& params, const QString& filePath)
+{
+    try {
+        ReportData report = generateReport(params);
+        
+        if (report.data.isEmpty()) {
+            throw std::runtime_error("Report data is empty");
+        }
+        
+        bool success = false;
+        switch (params.format) {
+            case ReportFormat::PDF:
+                success = exportToPDF(report, filePath);
+                break;
+            case ReportFormat::CSV:
+                success = exportToCSV(report, filePath);
+                break;
+            case ReportFormat::Excel:
+                success = exportToExcel(report, filePath);
+                break;
+            case ReportFormat::JSON:
+                success = exportToJSON(report, filePath);
+                break;
+            case ReportFormat::HTML:
+                success = exportToHTML(report, filePath);
+                break;
+        }
+        
+        if (success) {
+            report.filePath = filePath;
+            saveReportToDatabase(report);
+            emit reportExported(filePath);
+        }
+        
+        return success;
+        
+    } catch (const std::exception& e) {
+        QString errorMsg = QString("Failed to generate and save report: %1").arg(e.what());
+        LOG_ERROR(errorMsg, ErrorCategory::FileSystem);
+        emit reportGenerationFailed(errorMsg);
+        return false;
+    }
+}
+
+ReportData ReportManager::generateDailyVisitorLog(const QDateTime& date)
+{
+    ReportData report;
+    report.description = tr("Daily visitor log for %1").arg(date.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Time"),
+            tr("Visitor Name"),
+            tr("ID Number"),
+            tr("Company"),
+            tr("Host"),
+            tr("Purpose"),
+            tr("Check In"),
+            tr("Check Out"),
+            tr("Duration")
+        };
+        
+        query.prepare("SELECT v.name, v.identification_number, v.company, v.host_id, "
+                     "v.purpose, vi.check_in_time, vi.check_out_time "
+                     "FROM visitors v "
+                     "JOIN visits vi ON v.id = vi.visitor_id "
+                     "WHERE DATE(vi.check_in_time) = DATE(?) "
+                     "ORDER BY vi.check_in_time");
+        
+        query.addBindValue(date);
+        
+        if (query.exec()) {
+            while (query.next()) {
+                QStringList row;
+                QDateTime checkIn = query.value("check_in_time").toDateTime();
+                QDateTime checkOut = query.value("check_out_time").toDateTime();
+                
+                row << checkIn.toString("HH:mm");
+                row << query.value("name").toString();
+                row << query.value("identification_number").toString();
+                row << query.value("company").toString();
+                row << query.value("host_id").toString();
+                row << query.value("purpose").toString();
+                row << checkIn.toString("HH:mm");
+                row << (checkOut.isValid() ? checkOut.toString("HH:mm") : tr("Not checked out"));
+                
+                if (checkOut.isValid()) {
+                    int duration = checkIn.secsTo(checkOut) / 60; // minutes
+                    row << QString("%1h %2m").arg(duration / 60).arg(duration % 60);
+                } else {
+                    row << tr("N/A");
+                }
+                
+                report.data.append(row);
+            }
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate daily visitor log: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateCurrentVisitorsReport()
+{
+    ReportData report;
+    report.description = tr("Currently checked-in visitors");
+    
+    try {
+        QList<Visitor*> currentVisitors = VisitorManager::getInstance().getCurrentVisitors();
+        
+        report.headers = {
+            tr("Visitor Name"),
+            tr("ID Number"),
+            tr("Company"),
+            tr("Host"),
+            tr("Purpose"),
+            tr("Check In Time"),
+            tr("Duration")
+        };
+        
+        for (const Visitor* visitor : currentVisitors) {
+            QStringList row;
+            QDateTime checkInTime = VisitorManager::getInstance().getCheckInTime(visitor->getId());
+            int duration = checkInTime.secsTo(QDateTime::currentDateTime()) / 60; // minutes
+            
+            row << visitor->getName();
+            row << visitor->getIdentificationNumber();
+            row << visitor->getCompany();
+            row << visitor->getHostId();
+            row << visitor->getPurpose();
+            row << checkInTime.toString("HH:mm");
+            row << QString("%1h %2m").arg(duration / 60).arg(duration % 60);
+            
+            report.data.append(row);
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate current visitors report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateVisitorFrequencyReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Visitor frequency analysis from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Date"),
+            tr("Total Visitors"),
+            tr("Unique Visitors"),
+            tr("Peak Hour"),
+            tr("Average Duration")
+        };
+        
+        query.prepare("SELECT DATE(vi.check_in_time) as visit_date, "
+                     "COUNT(*) as total_visits, "
+                     "COUNT(DISTINCT vi.visitor_id) as unique_visitors, "
+                     "strftime('%H', vi.check_in_time) as hour, "
+                     "AVG(CASE WHEN vi.check_out_time IS NOT NULL "
+                     "THEN (julianday(vi.check_out_time) - julianday(vi.check_in_time)) * 24 * 60 "
+                     "ELSE NULL END) as avg_duration "
+                     "FROM visits vi "
+                     "WHERE vi.check_in_time BETWEEN ? AND ? "
+                     "GROUP BY DATE(vi.check_in_time) "
+                     "ORDER BY visit_date");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec()) {
+            while (query.next()) {
+                QStringList row;
+                row << query.value("visit_date").toString();
+                row << query.value("total_visits").toString();
+                row << query.value("unique_visitors").toString();
+                row << query.value("hour").toString() + ":00";
+                
+                double avgDuration = query.value("avg_duration").toDouble();
+                if (avgDuration > 0) {
+                    row << QString("%1h %2m").arg(static_cast<int>(avgDuration) / 60)
+                                           .arg(static_cast<int>(avgDuration) % 60);
+                } else {
+                    row << tr("N/A");
+                }
+                
+                report.data.append(row);
+            }
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate visitor frequency report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generatePeakTimeAnalysis(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Peak time analysis from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Hour"),
+            tr("Total Visitors"),
+            tr("Average Duration"),
+            tr("Peak Day")
+        };
+        
+        query.prepare("SELECT strftime('%H', vi.check_in_time) as hour, "
+                     "COUNT(*) as total_visitors, "
+                     "AVG(CASE WHEN vi.check_out_time IS NOT NULL "
+                     "THEN (julianday(vi.check_out_time) - julianday(vi.check_in_time)) * 24 * 60 "
+                     "ELSE NULL END) as avg_duration "
+                     "FROM visits vi "
+                     "WHERE vi.check_in_time BETWEEN ? AND ? "
+                     "GROUP BY strftime('%H', vi.check_in_time) "
+                     "ORDER BY total_visitors DESC");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec()) {
+            while (query.next()) {
+                QStringList row;
+                row << query.value("hour").toString() + ":00";
+                row << query.value("total_visitors").toString();
+                
+                double avgDuration = query.value("avg_duration").toDouble();
+                if (avgDuration > 0) {
+                    row << QString("%1h %2m").arg(static_cast<int>(avgDuration) / 60)
+                                           .arg(static_cast<int>(avgDuration) % 60);
+                } else {
+                    row << tr("N/A");
+                }
+                
+                // TODO: Calculate peak day for this hour
+                row << tr("N/A");
+                
+                report.data.append(row);
+            }
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate peak time analysis: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateVisitDurationReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Visit duration analysis from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Duration Range"),
+            tr("Number of Visits"),
+            tr("Percentage"),
+            tr("Average Duration")
+        };
+        
+        query.prepare("SELECT "
+                     "CASE "
+                     "WHEN duration < 30 THEN '< 30 min' "
+                     "WHEN duration < 60 THEN '30-60 min' "
+                     "WHEN duration < 120 THEN '1-2 hours' "
+                     "WHEN duration < 240 THEN '2-4 hours' "
+                     "ELSE '> 4 hours' "
+                     "END as duration_range, "
+                     "COUNT(*) as visit_count, "
+                     "AVG(duration) as avg_duration "
+                     "FROM ("
+                     "SELECT (julianday(vi.check_out_time) - julianday(vi.check_in_time)) * 24 * 60 as duration "
+                     "FROM visits vi "
+                     "WHERE vi.check_in_time BETWEEN ? AND ? "
+                     "AND vi.check_out_time IS NOT NULL"
+                     ") "
+                     "GROUP BY duration_range "
+                     "ORDER BY avg_duration");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec()) {
+            int totalVisits = 0;
+            QList<QStringList> tempData;
+            
+            while (query.next()) {
+                QStringList row;
+                row << query.value("duration_range").toString();
+                row << query.value("visit_count").toString();
+                
+                int visitCount = query.value("visit_count").toInt();
+                totalVisits += visitCount;
+                
+                double avgDuration = query.value("avg_duration").toDouble();
+                row << QString("%1h %2m").arg(static_cast<int>(avgDuration) / 60)
+                                       .arg(static_cast<int>(avgDuration) % 60);
+                
+                tempData.append(row);
+            }
+            
+            // Calculate percentages
+            for (QStringList& row : tempData) {
+                int visitCount = row[1].toInt();
+                double percentage = (totalVisits > 0) ? (visitCount * 100.0 / totalVisits) : 0;
+                row.insert(2, QString("%1%").arg(percentage, 0, 'f', 1));
+            }
+            
+            report.data = tempData;
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate visit duration report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateCustomerStatisticsReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Customer statistics from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Company"),
+            tr("Total Visitors"),
+            tr("Unique Visitors"),
+            tr("Average Visits per Day"),
+            tr("Most Common Purpose")
+        };
+        
+        query.prepare("SELECT v.company, "
+                     "COUNT(*) as total_visits, "
+                     "COUNT(DISTINCT vi.visitor_id) as unique_visitors, "
+                     "COUNT(*) / CAST((julianday(?) - julianday(?)) AS INTEGER) as avg_visits_per_day, "
+                     "v.purpose "
+                     "FROM visits vi "
+                     "JOIN visitors v ON vi.visitor_id = v.id "
+                     "WHERE vi.check_in_time BETWEEN ? AND ? "
+                     "AND v.company IS NOT NULL AND v.company != '' "
+                     "GROUP BY v.company "
+                     "ORDER BY total_visits DESC");
+        
+        query.addBindValue(end);
+        query.addBindValue(start);
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec()) {
+            while (query.next()) {
+                QStringList row;
+                row << query.value("company").toString();
+                row << query.value("total_visits").toString();
+                row << query.value("unique_visitors").toString();
+                
+                double avgVisits = query.value("avg_visits_per_day").toDouble();
+                row << QString("%1").arg(avgVisits, 0, 'f', 1);
+                row << query.value("purpose").toString();
+                
+                report.data.append(row);
+            }
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate customer statistics report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateSecurityIncidentsReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Security incidents from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Date"),
+            tr("Time"),
+            tr("Incident Type"),
+            tr("Description"),
+            tr("Visitor"),
+            tr("Action Taken")
+        };
+        
+        // This would query a security_incidents table
+        // For now, we'll create a placeholder report
+        query.prepare("SELECT 'No incidents recorded' as message");
+        
+        if (query.exec() && query.next()) {
+            QStringList row;
+            row << QDateTime::currentDateTime().toString("yyyy-MM-dd");
+            row << QDateTime::currentDateTime().toString("HH:mm");
+            row << tr("No incidents");
+            row << tr("No security incidents were recorded during this period");
+            row << tr("N/A");
+            row << tr("N/A");
+            
+            report.data.append(row);
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate security incidents report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateContractorTrackingReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("Contractor tracking from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Contractor Name"),
+            tr("Company"),
+            tr("Total Hours"),
+            tr("Days Worked"),
+            tr("Average Hours per Day"),
+            tr("Last Visit")
+        };
+        
+        query.prepare("SELECT v.name, v.company, "
+                     "SUM(CASE WHEN vi.check_out_time IS NOT NULL "
+                     "THEN (julianday(vi.check_out_time) - julianday(vi.check_in_time)) * 24 "
+                     "ELSE 0 END) as total_hours, "
+                     "COUNT(DISTINCT DATE(vi.check_in_time)) as days_worked, "
+                     "MAX(vi.check_in_time) as last_visit "
+                     "FROM visits vi "
+                     "JOIN visitors v ON vi.visitor_id = v.id "
+                     "WHERE vi.check_in_time BETWEEN ? AND ? "
+                     "AND v.type = ? "
+                     "GROUP BY vi.visitor_id "
+                     "ORDER BY total_hours DESC");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        query.addBindValue(static_cast<int>(Visitor::VisitorType::Contractor));
+        
+        if (query.exec()) {
+            while (query.next()) {
+                QStringList row;
+                row << query.value("name").toString();
+                row << query.value("company").toString();
+                
+                double totalHours = query.value("total_hours").toDouble();
+                row << QString("%1h %2m").arg(static_cast<int>(totalHours))
+                                       .arg(static_cast<int>((totalHours - static_cast<int>(totalHours)) * 60));
+                
+                int daysWorked = query.value("days_worked").toInt();
+                row << QString::number(daysWorked);
+                
+                double avgHours = (daysWorked > 0) ? (totalHours / daysWorked) : 0;
+                row << QString("%1h %2m").arg(static_cast<int>(avgHours))
+                                       .arg(static_cast<int>((avgHours - static_cast<int>(avgHours)) * 60));
+                
+                QDateTime lastVisit = query.value("last_visit").toDateTime();
+                row << lastVisit.toString("yyyy-MM-dd HH:mm");
+                
+                report.data.append(row);
+            }
+        } else {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate contractor tracking report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateEmergencyEvacuationReport()
+{
+    ReportData report;
+    report.description = tr("Emergency evacuation list - Current visitors on premises");
+    
+    try {
+        QList<Visitor*> currentVisitors = VisitorManager::getInstance().getCurrentVisitors();
+        
+        report.headers = {
+            tr("Visitor Name"),
+            tr("ID Number"),
+            tr("Company"),
+            tr("Host"),
+            tr("Location"),
+            tr("Check In Time"),
+            tr("Emergency Contact")
+        };
+        
+        for (const Visitor* visitor : currentVisitors) {
+            QStringList row;
+            row << visitor->getName();
+            row << visitor->getIdentificationNumber();
+            row << visitor->getCompany();
+            row << visitor->getHostId();
+            row << tr("Main Building"); // TODO: Add location tracking
+            row << VisitorManager::getInstance().getCheckInTime(visitor->getId()).toString("HH:mm");
+            row << visitor->getPhone(); // Use phone as emergency contact
+            
+            report.data.append(row);
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate emergency evacuation report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+ReportData ReportManager::generateComplianceReport(const QDateTime& start, const QDateTime& end)
+{
+    ReportData report;
+    report.description = tr("PDPA compliance report from %1 to %2")
+                        .arg(start.toString("yyyy-MM-dd"))
+                        .arg(end.toString("yyyy-MM-dd"));
+    
+    try {
+        QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+        QSqlQuery query(db);
+        
+        report.headers = {
+            tr("Compliance Item"),
+            tr("Status"),
+            tr("Count"),
+            tr("Percentage"),
+            tr("Details")
+        };
+        
+        // Check consent compliance
+        query.prepare("SELECT COUNT(*) as total_visitors, "
+                     "SUM(CASE WHEN consent = 1 THEN 1 ELSE 0 END) as with_consent "
+                     "FROM visitors v "
+                     "JOIN visits vi ON v.id = vi.visitor_id "
+                     "WHERE vi.check_in_time BETWEEN ? AND ?");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec() && query.next()) {
+            int totalVisitors = query.value("total_visitors").toInt();
+            int withConsent = query.value("with_consent").toInt();
+            double consentPercentage = (totalVisitors > 0) ? (withConsent * 100.0 / totalVisitors) : 0;
+            
+            QStringList row;
+            row << tr("Consent Collection");
+            row << (consentPercentage >= 100 ? tr("Compliant") : tr("Non-Compliant"));
+            row << QString("%1/%2").arg(withConsent).arg(totalVisitors);
+            row << QString("%1%").arg(consentPercentage, 0, 'f', 1);
+            row << tr("All visitors must provide consent");
+            report.data.append(row);
+        }
+        
+        // Check data retention
+        query.prepare("SELECT COUNT(*) as expired_records "
+                     "FROM visitors "
+                     "WHERE datetime(created_at, '+' || retention_period || ' days') < datetime('now')");
+        
+        if (query.exec() && query.next()) {
+            int expiredRecords = query.value("expired_records").toInt();
+            
+            QStringList row;
+            row << tr("Data Retention");
+            row << (expiredRecords == 0 ? tr("Compliant") : tr("Action Required"));
+            row << QString::number(expiredRecords);
+            row << tr("N/A");
+            row << tr("Expired records should be purged");
+            report.data.append(row);
+        }
+        
+        // Check audit logging
+        query.prepare("SELECT COUNT(*) as audit_entries "
+                     "FROM audit_log "
+                     "WHERE created_at BETWEEN ? AND ?");
+        
+        query.addBindValue(start);
+        query.addBindValue(end);
+        
+        if (query.exec() && query.next()) {
+            int auditEntries = query.value("audit_entries").toInt();
+            
+            QStringList row;
+            row << tr("Audit Logging");
+            row << (auditEntries > 0 ? tr("Compliant") : tr("Warning"));
+            row << QString::number(auditEntries);
+            row << tr("N/A");
+            row << tr("All data access should be logged");
+            report.data.append(row);
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to generate compliance report: %1").arg(e.what()), 
+                 ErrorCategory::Database);
+    }
+    
+    return report;
+}
+
+bool ReportManager::exportToCSV(const ReportData& report, const QString& filePath)
+{
+    try {
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            throw std::runtime_error("Failed to open file for writing");
+        }
+        
+        QTextStream stream(&file);
+        stream.setCodec("UTF-8");
+        
+        // Write headers
+        stream << report.headers.join(",") << "\n";
+        
+        // Write data
+        for (const QStringList& row : report.data) {
+            QStringList escapedRow;
+            for (const QString& cell : row) {
+                // Escape commas and quotes
+                QString escaped = cell;
+                escaped.replace("\"", "\"\"");
+                if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+                    escaped = "\"" + escaped + "\"";
+                }
+                escapedRow << escaped;
+            }
+            stream << escapedRow.join(",") << "\n";
+        }
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to export to CSV: %1").arg(e.what()), 
+                 ErrorCategory::FileSystem);
+        return false;
+    }
+}
+
+bool ReportManager::exportToJSON(const ReportData& report, const QString& filePath)
+{
+    try {
+        QJsonObject reportObj;
+        reportObj["title"] = report.title;
+        reportObj["description"] = report.description;
+        reportObj["generatedAt"] = report.generatedAt.toString(Qt::ISODate);
+        reportObj["generatedBy"] = report.generatedBy;
+        reportObj["headers"] = QJsonArray::fromStringList(report.headers);
+        
+        QJsonArray dataArray;
+        for (const QStringList& row : report.data) {
+            dataArray.append(QJsonArray::fromStringList(row));
+        }
+        reportObj["data"] = dataArray;
+        
+        QJsonObject summaryObj;
+        for (auto it = report.summary.begin(); it != report.summary.end(); ++it) {
+            summaryObj[it.key()] = QJsonValue::fromVariant(it.value());
+        }
+        reportObj["summary"] = summaryObj;
+        
+        QJsonDocument doc(reportObj);
+        
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly)) {
+            throw std::runtime_error("Failed to open file for writing");
+        }
+        
+        file.write(doc.toJson());
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to export to JSON: %1").arg(e.what()), 
+                 ErrorCategory::FileSystem);
+        return false;
+    }
+}
+
+bool ReportManager::exportToHTML(const ReportData& report, const QString& filePath)
+{
+    try {
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            throw std::runtime_error("Failed to open file for writing");
+        }
+        
+        QTextStream stream(&file);
+        stream.setCodec("UTF-8");
+        
+        // Write HTML header
+        stream << "<!DOCTYPE html>\n";
+        stream << "<html>\n<head>\n";
+        stream << "<meta charset=\"UTF-8\">\n";
+        stream << "<title>" << report.title << "</title>\n";
+        stream << "<style>\n";
+        stream << "body { font-family: Arial, sans-serif; margin: 20px; }\n";
+        stream << "table { border-collapse: collapse; width: 100%; }\n";
+        stream << "th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n";
+        stream << "th { background-color: #f2f2f2; }\n";
+        stream << "tr:nth-child(even) { background-color: #f9f9f9; }\n";
+        stream << ".summary { margin: 20px 0; padding: 10px; background-color: #e7f3ff; }\n";
+        stream << "</style>\n</head>\n<body>\n";
+        
+        // Write title and description
+        stream << "<h1>" << report.title << "</h1>\n";
+        stream << "<p>" << report.description << "</p>\n";
+        stream << "<p><strong>Generated:</strong> " << report.generatedAt.toString("yyyy-MM-dd HH:mm:ss") << "</p>\n";
+        
+        // Write summary if available
+        if (!report.summary.isEmpty()) {
+            stream << "<div class=\"summary\">\n<h3>Summary</h3>\n<ul>\n";
+            for (auto it = report.summary.begin(); it != report.summary.end(); ++it) {
+                stream << "<li><strong>" << it.key() << ":</strong> " << it.value().toString() << "</li>\n";
+            }
+            stream << "</ul>\n</div>\n";
+        }
+        
+        // Write table
+        if (!report.data.isEmpty()) {
+            stream << "<table>\n<thead>\n<tr>\n";
+            for (const QString& header : report.headers) {
+                stream << "<th>" << header << "</th>\n";
+            }
+            stream << "</tr>\n</thead>\n<tbody>\n";
+            
+            for (const QStringList& row : report.data) {
+                stream << "<tr>\n";
+                for (const QString& cell : row) {
+                    stream << "<td>" << cell << "</td>\n";
+                }
+                stream << "</tr>\n";
+            }
+            
+            stream << "</tbody>\n</table>\n";
+        }
+        
+        stream << "</body>\n</html>\n";
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR(QString("Failed to export to HTML: %1").arg(e.what()), 
+                 ErrorCategory::FileSystem);
+        return false;
+    }
+}
+
+bool ReportManager::exportToPDF(const ReportData& report, const QString& filePath)
+{
+    // TODO: Implement PDF export using QPrinter or a PDF library
+    LOG_WARNING("PDF export not implemented", ErrorCategory::System);
+    return false;
+}
+
+bool ReportManager::exportToExcel(const ReportData& report, const QString& filePath)
+{
+    // TODO: Implement Excel export using a library like OpenXLSX
+    LOG_WARNING("Excel export not implemented", ErrorCategory::System);
+    return false;
+}
+
+QString ReportManager::generateReportId()
+{
+    return QUuid::createUuid().toString();
+}
+
+void ReportManager::saveReportToDatabase(const ReportData& report)
+{
+    // TODO: Implement report saving to database
+    LOG_INFO("Report saved to database", ErrorCategory::Database);
+}
+
+QList<ReportData> ReportManager::loadReportsFromDatabase()
+{
+    // TODO: Implement loading reports from database
+    return QList<ReportData>();
+}
+
+QString ReportManager::formatReportTitle(ReportType type, const QDateTime& start, const QDateTime& end)
+{
+    QString typeStr;
+    switch (type) {
+        case ReportType::DailyVisitorLog: typeStr = tr("Daily Visitor Log"); break;
+        case ReportType::CurrentVisitors: typeStr = tr("Current Visitors Report"); break;
+        case ReportType::VisitorFrequency: typeStr = tr("Visitor Frequency Report"); break;
+        case ReportType::PeakTimeAnalysis: typeStr = tr("Peak Time Analysis"); break;
+        case ReportType::VisitDuration: typeStr = tr("Visit Duration Report"); break;
+        case ReportType::CustomerStatistics: typeStr = tr("Customer Statistics Report"); break;
+        case ReportType::SecurityIncidents: typeStr = tr("Security Incidents Report"); break;
+        case ReportType::ContractorTracking: typeStr = tr("Contractor Tracking Report"); break;
+        case ReportType::EmergencyEvacuation: typeStr = tr("Emergency Evacuation Report"); break;
+        case ReportType::ComplianceReport: typeStr = tr("Compliance Report"); break;
+        default: typeStr = tr("Custom Report"); break;
+    }
+    
+    if (start.isValid() && end.isValid()) {
+        return QString("%1 - %2 to %3").arg(typeStr)
+                                      .arg(start.toString("yyyy-MM-dd"))
+                                      .arg(end.toString("yyyy-MM-dd"));
+    }
+    
+    return typeStr;
+}
+
+QMap<QString, QVariant> ReportManager::calculateSummary(const QList<QStringList>& data)
+{
+    QMap<QString, QVariant> summary;
+    
+    if (data.isEmpty()) {
+        summary["Total Records"] = 0;
+        return summary;
+    }
+    
+    summary["Total Records"] = data.size();
+    
+    return summary;
+}
+
+void ReportManager::addChartsToReport(ReportData& report)
+{
+    // TODO: Implement chart generation
+    LOG_INFO("Charts added to report", ErrorCategory::System);
+}
+
+void ReportManager::validateReportParameters(const ReportParameters& params)
+{
+    if (params.startDate > params.endDate) {
+        throw std::runtime_error("Start date cannot be after end date");
+    }
+    
+    if (params.startDate.isValid() && params.endDate.isValid()) {
+        if (params.startDate.daysTo(params.endDate) > 365) {
+            throw std::runtime_error("Report period cannot exceed one year");
+        }
+    }
+}
+
+QList<ReportData> ReportManager::getGeneratedReports()
+{
+    return loadReportsFromDatabase();
+}
+
+bool ReportManager::deleteReport(const QString& reportId)
+{
+    // TODO: Implement report deletion
+    return false;
+}
+
+ReportData ReportManager::getReport(const QString& reportId)
+{
+    // TODO: Implement report retrieval
+    return ReportData();
+}
+
+QStringList ReportManager::getAvailableTemplates()
+{
+    // TODO: Implement template management
+    return QStringList();
+}
+
+bool ReportManager::saveTemplate(const QString& name, const ReportParameters& params)
+{
+    // TODO: Implement template saving
+    return false;
+}
+
+ReportParameters ReportManager::loadTemplate(const QString& name)
+{
+    // TODO: Implement template loading
+    return ReportParameters();
+}
+
+bool ReportManager::deleteTemplate(const QString& name)
+{
+    // TODO: Implement template deletion
+    return false;
+} 
