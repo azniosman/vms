@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         qDebug() << "Report manager initialized";
         
         // Generate a simple report
-        ReportManager::ReportData report = ReportManager::getInstance().generateCurrentVisitorsReport();
+        ReportData report = ReportManager::getInstance().generateCurrentVisitorsReport();
         qDebug() << "Generated report with" << report.data.size() << "rows";
         
         qDebug() << "All core functionality tested successfully!";

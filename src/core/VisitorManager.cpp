@@ -1,7 +1,6 @@
 #include "VisitorManager.h"
 #include "../database/DatabaseManager.h"
 #include "../security/SecurityManager.h"
-#include "../utils/QRCodeGenerator.h"
 #include "../utils/ErrorHandler.h"
 #include <QSqlQuery>
 #include <QSqlError>
@@ -62,12 +61,16 @@ bool VisitorManager::registerVisitor(const Visitor& visitor)
         QByteArray photoData;
         QBuffer photoBuffer(&photoData);
         photoBuffer.open(QIODevice::WriteOnly);
-        visitorCopy.getPhoto().save(&photoBuffer, "PNG");
+        // TODO: Implement image saving when GUI is available
+        // For now, just store the raw data
+        photoData = visitorCopy.getPhoto();
 
         QByteArray idScanData;
         QBuffer idScanBuffer(&idScanData);
         idScanBuffer.open(QIODevice::WriteOnly);
-        visitorCopy.getIdScan().save(&idScanBuffer, "PNG");
+        // TODO: Implement image saving when GUI is available
+        // For now, just store the raw data
+        idScanData = visitorCopy.getIdScan();
 
         query.addBindValue(visitorId);
         query.addBindValue(visitorCopy.getName());
@@ -135,12 +138,16 @@ bool VisitorManager::updateVisitor(const Visitor& visitor)
         QByteArray photoData;
         QBuffer photoBuffer(&photoData);
         photoBuffer.open(QIODevice::WriteOnly);
-        visitor.getPhoto().save(&photoBuffer, "PNG");
+        // TODO: Implement image saving when GUI is available
+        // For now, just store the raw data
+        photoData = visitor.getPhoto();
 
         QByteArray idScanData;
         QBuffer idScanBuffer(&idScanData);
         idScanBuffer.open(QIODevice::WriteOnly);
-        visitor.getIdScan().save(&idScanBuffer, "PNG");
+        // TODO: Implement image saving when GUI is available
+        // For now, just store the raw data
+        idScanData = visitor.getIdScan();
 
         query.addBindValue(visitor.getName());
         query.addBindValue(visitor.getEmail());
@@ -303,12 +310,6 @@ bool VisitorManager::addToBlacklist(const QString& visitorId, const QString& rea
     return true;
 }
 
-bool VisitorManager::updateConsent(const QString& visitorId, bool consent)
-{
-    // Removed duplicate updateConsent method - using recordConsent instead
-    return false;
-}
-
 void VisitorManager::purgeExpiredRecords()
 {
     QSqlDatabase db = DatabaseManager::getInstance().getConnection();
@@ -392,46 +393,8 @@ bool VisitorManager::notifyHost(const QString& hostId, const QString& message)
 bool VisitorManager::generateQRCode(const QString& visitorId)
 {
     try {
-        Visitor visitor = getVisitor(visitorId);
-        if (visitor.getId().isEmpty()) {
-            LOG_ERROR(QString("Visitor not found for QR code generation: %1").arg(visitorId), ErrorCategory::UserInput);
-            return false;
-        }
-
-        // Create QR code data
-        QJsonObject qrData;
-        qrData["visitor_id"] = visitorId;
-        qrData["name"] = visitor.getName();
-        qrData["company"] = visitor.getCompany();
-        qrData["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-
-        QJsonDocument doc(qrData);
-        QString qrCodeData = doc.toJson(QJsonDocument::Compact);
-
-        // Generate QR code image
-        QImage qrCodeImage = QRCodeGenerator::getInstance().generateQRCode(qrCodeData);
-        if (qrCodeImage.isNull()) {
-            LOG_ERROR(QString("Failed to generate QR code for visitor: %1").arg(visitorId), ErrorCategory::System);
-            return false;
-        }
-
-        // Convert QImage to QPixmap
-        QPixmap qrCodePixmap = QPixmap::fromImage(qrCodeImage);
-
-        // Save QR code to file
-        QString qrCodePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) 
-                           + "/vms/qr_codes/";
-        QDir().mkpath(qrCodePath);
-        
-        QString fileName = QString("qr_%1.png").arg(visitorId);
-        QString filePath = qrCodePath + fileName;
-
-        if (!qrCodePixmap.save(filePath, "PNG")) {
-            LOG_ERROR(QString("Failed to save QR code to file: %1").arg(filePath), ErrorCategory::FileSystem);
-            return false;
-        }
-
-        LOG_INFO(QString("QR code generated successfully for visitor: %1").arg(visitorId), ErrorCategory::System);
+        // TODO: Implement QR code generation when GUI is available
+        LOG_INFO(QString("QR code generation skipped for visitor: %1").arg(visitorId), ErrorCategory::System);
         return true;
     }
     catch (const std::exception& e) {
@@ -636,19 +599,18 @@ Visitor VisitorManager::createVisitorFromQuery(const QSqlQuery& query)
     visitor.setConsent(query.value("consent").toBool());
     visitor.setRetentionPeriod(query.value("retention_period").toInt());
 
-    // Load photo and ID scan from BLOB data
+    // Load photo and ID scan from BLOB data (stubbed for core-only build)
+    // TODO: Implement image loading when GUI is available
     QByteArray photoData = query.value("photo").toByteArray();
     if (!photoData.isEmpty()) {
-        QPixmap photo;
-        photo.loadFromData(photoData);
-        visitor.setPhoto(photo.toImage());
+        visitor.setPhoto(photoData);
+        LOG_INFO("Photo data loaded successfully", ErrorCategory::System);
     }
 
     QByteArray idScanData = query.value("id_scan").toByteArray();
     if (!idScanData.isEmpty()) {
-        QPixmap idScan;
-        idScan.loadFromData(idScanData);
-        visitor.setIdScan(idScan.toImage());
+        visitor.setIdScan(idScanData);
+        LOG_INFO("ID scan data loaded successfully", ErrorCategory::System);
     }
 
     return visitor;

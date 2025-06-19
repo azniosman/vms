@@ -70,7 +70,6 @@ include CMakeFiles/vms.dir/progress.make
 include CMakeFiles/vms.dir/flags.make
 
 vms_autogen/timestamp: /opt/homebrew/share/qt/libexec/moc
-vms_autogen/timestamp: /opt/homebrew/share/qt/libexec/uic
 vms_autogen/timestamp: CMakeFiles/vms.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC and UIC for target vms"
 	/opt/homebrew/bin/cmake -E cmake_autogen /Users/azni/Documents/augment-projects/vms/build/CMakeFiles/vms_autogen.dir/AutogenInfo.json ""
@@ -163,24 +162,10 @@ CMakeFiles/vms.dir/src/security/SecurityManager.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/vms.dir/src/security/SecurityManager.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/azni/Documents/augment-projects/vms/src/security/SecurityManager.cpp -o CMakeFiles/vms.dir/src/security/SecurityManager.cpp.s
 
-CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o: CMakeFiles/vms.dir/flags.make
-CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o: /Users/azni/Documents/augment-projects/vms/src/utils/QRCodeGenerator.cpp
-CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o: CMakeFiles/vms.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o -MF CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o.d -o CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o -c /Users/azni/Documents/augment-projects/vms/src/utils/QRCodeGenerator.cpp
-
-CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/azni/Documents/augment-projects/vms/src/utils/QRCodeGenerator.cpp > CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.i
-
-CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/azni/Documents/augment-projects/vms/src/utils/QRCodeGenerator.cpp -o CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.s
-
 CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o: CMakeFiles/vms.dir/flags.make
 CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o: /Users/azni/Documents/augment-projects/vms/src/utils/ErrorHandler.cpp
 CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o: CMakeFiles/vms.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o -MF CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o.d -o CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o -c /Users/azni/Documents/augment-projects/vms/src/utils/ErrorHandler.cpp
 
 CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.i: cmake_force
@@ -194,7 +179,7 @@ CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.s: cmake_force
 CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o: CMakeFiles/vms.dir/flags.make
 CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o: /Users/azni/Documents/augment-projects/vms/src/reports/ReportManager.cpp
 CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o: CMakeFiles/vms.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o -MF CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o.d -o CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o -c /Users/azni/Documents/augment-projects/vms/src/reports/ReportManager.cpp
 
 CMakeFiles/vms.dir/src/reports/ReportManager.cpp.i: cmake_force
@@ -213,7 +198,6 @@ vms_OBJECTS = \
 "CMakeFiles/vms.dir/src/core/VisitorManager.cpp.o" \
 "CMakeFiles/vms.dir/src/database/DatabaseManager.cpp.o" \
 "CMakeFiles/vms.dir/src/security/SecurityManager.cpp.o" \
-"CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o" \
 "CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o" \
 "CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o"
 
@@ -226,21 +210,16 @@ vms: CMakeFiles/vms.dir/src/core/Visitor.cpp.o
 vms: CMakeFiles/vms.dir/src/core/VisitorManager.cpp.o
 vms: CMakeFiles/vms.dir/src/database/DatabaseManager.cpp.o
 vms: CMakeFiles/vms.dir/src/security/SecurityManager.cpp.o
-vms: CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o
 vms: CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o
 vms: CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o
 vms: CMakeFiles/vms.dir/build.make
 vms: /opt/homebrew/lib/QtSql.framework/Versions/A/QtSql
 vms: /opt/homebrew/lib/QtNetwork.framework/Versions/A/QtNetwork
-vms: /opt/homebrew/lib/QtPrintSupport.framework/Versions/A/QtPrintSupport
 vms: /opt/homebrew/lib/libssl.dylib
 vms: /opt/homebrew/lib/libcrypto.dylib
-vms: /opt/homebrew/lib/QtWidgets.framework/Versions/A/QtWidgets
-vms: /opt/homebrew/lib/QtGui.framework/Versions/A/QtGui
 vms: /opt/homebrew/lib/QtCore.framework/Versions/A/QtCore
-vms: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libcups.tbd
 vms: CMakeFiles/vms.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX executable vms"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable vms"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/vms.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

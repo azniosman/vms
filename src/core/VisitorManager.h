@@ -16,7 +16,6 @@
 #include <QTextStream>
 #include <QCoreApplication>
 #include <QDebug>
-#include <QPixmap>
 #include <QSqlQuery>
 #include <QSqlDatabase>
 #include <QSqlError>

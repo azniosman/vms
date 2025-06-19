@@ -12,8 +12,6 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QMutexLocker>
-#include <QApplication>
-#include <QMessageBox>
 
 ErrorHandler* ErrorHandler::instance = nullptr;
 QMutex ErrorHandler::instanceMutex;

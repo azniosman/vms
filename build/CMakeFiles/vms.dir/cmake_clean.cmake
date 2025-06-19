@@ -16,8 +16,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/vms.dir/src/security/SecurityManager.cpp.o.d"
   "CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o"
   "CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o.d"
-  "CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o"
-  "CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o.d"
   "CMakeFiles/vms.dir/vms_autogen/mocs_compilation.cpp.o"
   "CMakeFiles/vms.dir/vms_autogen/mocs_compilation.cpp.o.d"
   "vms"

@@ -4,4 +4,3 @@
 #include "N7LAV2F375/moc_ReportManager.cpp"
 #include "AWH56BEWUT/moc_SecurityManager.cpp"
 #include "VSCBVMNR7M/moc_ErrorHandler.cpp"
-#include "VSCBVMNR7M/moc_QRCodeGenerator.cpp"

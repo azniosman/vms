@@ -69,7 +69,6 @@ include CMakeFiles/vms_autogen.dir/progress.make
 CMakeFiles/vms_autogen: vms_autogen/timestamp
 
 vms_autogen/timestamp: /opt/homebrew/share/qt/libexec/moc
-vms_autogen/timestamp: /opt/homebrew/share/qt/libexec/uic
 vms_autogen/timestamp: CMakeFiles/vms_autogen.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/azni/Documents/augment-projects/vms/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC and UIC for target vms"
 	/opt/homebrew/bin/cmake -E cmake_autogen /Users/azni/Documents/augment-projects/vms/build/CMakeFiles/vms_autogen.dir/AutogenInfo.json ""

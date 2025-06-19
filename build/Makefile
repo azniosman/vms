@@ -368,30 +368,6 @@ src/utils/ErrorHandler.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/vms.dir/build.make CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.s
 .PHONY : src/utils/ErrorHandler.cpp.s
 
-src/utils/QRCodeGenerator.o: src/utils/QRCodeGenerator.cpp.o
-.PHONY : src/utils/QRCodeGenerator.o
-
-# target to build an object file
-src/utils/QRCodeGenerator.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vms.dir/build.make CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o
-.PHONY : src/utils/QRCodeGenerator.cpp.o
-
-src/utils/QRCodeGenerator.i: src/utils/QRCodeGenerator.cpp.i
-.PHONY : src/utils/QRCodeGenerator.i
-
-# target to preprocess a source file
-src/utils/QRCodeGenerator.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vms.dir/build.make CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.i
-.PHONY : src/utils/QRCodeGenerator.cpp.i
-
-src/utils/QRCodeGenerator.s: src/utils/QRCodeGenerator.cpp.s
-.PHONY : src/utils/QRCodeGenerator.s
-
-# target to generate assembly for a file
-src/utils/QRCodeGenerator.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vms.dir/build.make CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.s
-.PHONY : src/utils/QRCodeGenerator.cpp.s
-
 vms_autogen/mocs_compilation.o: vms_autogen/mocs_compilation.cpp.o
 .PHONY : vms_autogen/mocs_compilation.o
 
@@ -452,9 +428,6 @@ help:
 	@echo "... src/utils/ErrorHandler.o"
 	@echo "... src/utils/ErrorHandler.i"
 	@echo "... src/utils/ErrorHandler.s"
-	@echo "... src/utils/QRCodeGenerator.o"
-	@echo "... src/utils/QRCodeGenerator.i"
-	@echo "... src/utils/QRCodeGenerator.s"
 	@echo "... vms_autogen/mocs_compilation.o"
 	@echo "... vms_autogen/mocs_compilation.i"
 	@echo "... vms_autogen/mocs_compilation.s"

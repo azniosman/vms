@@ -7,14 +7,15 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# Disable OpenGL to avoid AGL framework issues on macOS
+set(QT_DISABLE_OPENGL ON)
+set(QT_DEFAULT_QPA_PLUGIN offscreen)
+
 # Find required Qt packages
 find_package(Qt6 REQUIRED COMPONENTS 
     Core
-    Gui
-    Widgets
     Sql
     Network
-    PrintSupport
 )
 
 # Find OpenSSL
@@ -27,7 +28,6 @@ set(SOURCES
     src/core/VisitorManager.cpp
     src/database/DatabaseManager.cpp
     src/security/SecurityManager.cpp
-    src/utils/QRCodeGenerator.cpp
     src/utils/ErrorHandler.cpp
     src/reports/ReportManager.cpp
 )
@@ -38,7 +38,6 @@ set(HEADERS
     src/core/VisitorManager.h
     src/database/DatabaseManager.h
     src/security/SecurityManager.h
-    src/utils/QRCodeGenerator.h
     src/utils/ErrorHandler.h
     src/reports/ReportManager.h
 )
@@ -52,11 +51,8 @@ add_executable(${PROJECT_NAME}
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
     Qt6::Sql
     Qt6::Network
-    Qt6::PrintSupport
     OpenSSL::SSL
     OpenSSL::Crypto
 )

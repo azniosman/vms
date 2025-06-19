@@ -3,7 +3,7 @@
 
 #include <QString>
 #include <QDateTime>
-#include <QImage>
+#include <QByteArray>
 
 class Visitor {
 public:
@@ -26,8 +26,8 @@ public:
     QString getCompany() const { return company; }
     QString getIdentificationNumber() const { return identificationNumber; }
     VisitorType getType() const { return type; }
-    QImage getPhoto() const { return photo; }
-    QImage getIdScan() const { return idScan; }
+    QByteArray getPhoto() const { return photo; }
+    QByteArray getIdScan() const { return idScan; }
     QString getSignature() const { return signature; }
     QString getHostId() const { return hostId; }
     QString getPurpose() const { return purpose; }
@@ -44,8 +44,8 @@ public:
     void setCompany(const QString& value) { company = value; }
     void setIdentificationNumber(const QString& value) { identificationNumber = value; }
     void setType(VisitorType value) { type = value; }
-    void setPhoto(const QImage& value) { photo = value; }
-    void setIdScan(const QImage& value) { idScan = value; }
+    void setPhoto(const QByteArray& value) { photo = value; }
+    void setIdScan(const QByteArray& value) { idScan = value; }
     void setSignature(const QString& value) { signature = value; }
     void setHostId(const QString& value) { hostId = value; }
     void setPurpose(const QString& value) { purpose = value; }
@@ -62,8 +62,8 @@ private:
     QString company;
     QString identificationNumber;
     VisitorType type;
-    QImage photo;
-    QImage idScan;
+    QByteArray photo;
+    QByteArray idScan;
     QString signature;
     QString hostId;
     QString purpose;

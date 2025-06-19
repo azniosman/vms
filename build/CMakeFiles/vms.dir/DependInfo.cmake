@@ -16,7 +16,6 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/azni/Documents/augment-projects/vms/src/reports/ReportManager.cpp" "CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o" "gcc" "CMakeFiles/vms.dir/src/reports/ReportManager.cpp.o.d"
   "/Users/azni/Documents/augment-projects/vms/src/security/SecurityManager.cpp" "CMakeFiles/vms.dir/src/security/SecurityManager.cpp.o" "gcc" "CMakeFiles/vms.dir/src/security/SecurityManager.cpp.o.d"
   "/Users/azni/Documents/augment-projects/vms/src/utils/ErrorHandler.cpp" "CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o" "gcc" "CMakeFiles/vms.dir/src/utils/ErrorHandler.cpp.o.d"
-  "/Users/azni/Documents/augment-projects/vms/src/utils/QRCodeGenerator.cpp" "CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o" "gcc" "CMakeFiles/vms.dir/src/utils/QRCodeGenerator.cpp.o.d"
   "/Users/azni/Documents/augment-projects/vms/build/vms_autogen/mocs_compilation.cpp" "CMakeFiles/vms.dir/vms_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/vms.dir/vms_autogen/mocs_compilation.cpp.o.d"
   )
 
