@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QString>
 #include <QByteArray>
+#include <QMutex>
 
 class QRCodeGenerator : public QObject {
     Q_OBJECT

@@ -2,8 +2,27 @@
 #define VISITORMANAGER_H
 
 #include <QObject>
-#include <QList>
+#include <QString>
 #include <QDateTime>
+#include <QList>
+#include <QMutex>
+#include <QStandardPaths>
+#include <QDir>
+#include <QFile>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QBuffer>
+#include <QTextStream>
+#include <QCoreApplication>
+#include <QDebug>
+#include <QPixmap>
+#include <QSqlQuery>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QUuid>
+#include <QTime>
+#include <QDate>
 #include "Visitor.h"
 
 class VisitorManager : public QObject {
@@ -13,16 +32,18 @@ public:
     static VisitorManager& getInstance();
 
     // Visitor registration
-    bool registerVisitor(Visitor& visitor);
+    bool registerVisitor(const Visitor& visitor);
     bool updateVisitor(const Visitor& visitor);
     bool deleteVisitor(const QString& visitorId);
-    Visitor* getVisitor(const QString& visitorId);
-    QList<Visitor*> searchVisitors(const QString& query);
+    Visitor getVisitor(const QString& visitorId);
+    QList<Visitor> getAllVisitors();
+    QList<Visitor> searchVisitors(const QString& searchTerm);
 
     // Check-in/out operations
-    bool checkIn(const QString& visitorId, const QString& hostId);
-    bool checkOut(const QString& visitorId);
-    QList<Visitor*> getCurrentVisitors();
+    bool checkInVisitor(const QString& visitorId, const QString& hostId = QString());
+    bool checkOutVisitor(const QString& visitorId);
+    bool isVisitorCheckedIn(const QString& visitorId);
+    QList<Visitor> getCheckedInVisitors();
     QDateTime getCheckInTime(const QString& visitorId);
     QDateTime getCheckOutTime(const QString& visitorId);
 
@@ -30,11 +51,18 @@ public:
     bool addToBlacklist(const QString& visitorId, const QString& reason);
     bool removeFromBlacklist(const QString& visitorId);
     bool isBlacklisted(const QString& visitorId);
-    QList<Visitor*> getBlacklistedVisitors();
+    QList<QPair<QString, QString>> getBlacklist();
 
-    // Consent management
-    bool updateConsent(const QString& visitorId, bool consent);
-    bool hasValidConsent(const QString& visitorId);
+    // Consent operations
+    bool recordConsent(const QString& visitorId, const QString& consentType, bool granted);
+    bool hasValidConsent(const QString& visitorId, const QString& consentType);
+
+    // Badge operations
+    bool generateQRCode(const QString& visitorId);
+    bool printVisitorBadge(const QString& visitorId);
+
+    // Audit logging
+    void logActivity(const QString& action, const QString& details, const QString& userId = QString());
 
     // Data retention
     void purgeExpiredRecords();
@@ -69,8 +97,7 @@ private:
     bool validateVisitorData(const Visitor& visitor);
     void logVisitorActivity(const QString& visitorId, const QString& action);
     bool notifyHost(const QString& hostId, const QString& message);
-    QString generateQRCode(const QString& visitorId);
-    bool printVisitorBadge(const QString& visitorId);
+    Visitor createVisitorFromQuery(const QSqlQuery& query);
 };
 
 #endif // VISITORMANAGER_H 

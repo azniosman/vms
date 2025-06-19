@@ -324,4 +324,144 @@ void CheckInOutDialog::showVisitorDetails(const Visitor* visitor)
                         .arg(visitor->getRetentionPeriod());
 
     QMessageBox::information(this, tr("Visitor Details"), details);
+}
+
+void CheckInOutDialog::loadCurrentVisitors()
+{
+    currentVisitors = VisitorManager::getInstance().getCheckedInVisitors();
+    updateVisitorList();
+}
+
+void CheckInOutDialog::updateVisitorList()
+{
+    visitorListWidget->clear();
+    
+    for (const Visitor& visitor : currentVisitors) {
+        QString checkInTime = VisitorManager::getInstance().getCheckInTime(visitor.getId()).toString("HH:mm");
+        QString checkOutTime = VisitorManager::getInstance().getCheckOutTime(visitor.getId()).toString("HH:mm");
+        
+        QString itemText = QString("%1 (%2) - Check-in: %3")
+                          .arg(visitor.getName())
+                          .arg(visitor.getCompany())
+                          .arg(checkInTime);
+        
+        if (!checkOutTime.isEmpty()) {
+            itemText += QString(" - Check-out: %1").arg(checkOutTime);
+        }
+        
+        QListWidgetItem* item = new QListWidgetItem(itemText);
+        item->setData(Qt::UserRole, visitor.getId());
+        visitorListWidget->addItem(item);
+    }
+}
+
+void CheckInOutDialog::checkInVisitor()
+{
+    QString visitorId = selectedVisitorId;
+    QString hostId = hostIdLineEdit->text().trimmed();
+    
+    if (visitorId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please select a visitor to check in.");
+        return;
+    }
+    
+    if (hostId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please enter a host ID.");
+        return;
+    }
+    
+    if (VisitorManager::getInstance().checkInVisitor(visitorId, hostId)) {
+        QMessageBox::information(this, "Success", "Visitor checked in successfully.");
+        loadCurrentVisitors();
+        clearForm();
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to check in visitor.");
+    }
+}
+
+void CheckInOutDialog::checkOutVisitor()
+{
+    QString visitorId = selectedVisitorId;
+    
+    if (visitorId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please select a visitor to check out.");
+        return;
+    }
+    
+    if (VisitorManager::getInstance().checkOutVisitor(visitorId)) {
+        QMessageBox::information(this, "Success", "Visitor checked out successfully.");
+        loadCurrentVisitors();
+        clearForm();
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to check out visitor.");
+    }
+}
+
+void CheckInOutDialog::searchVisitors()
+{
+    QString query = searchLineEdit->text().trimmed();
+    if (query.isEmpty()) {
+        loadCurrentVisitors();
+        return;
+    }
+    
+    searchResults = VisitorManager::getInstance().searchVisitors(query);
+    updateSearchResults();
+}
+
+void CheckInOutDialog::printBadge()
+{
+    QString visitorId = selectedVisitorId;
+    
+    if (visitorId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please select a visitor to print badge for.");
+        return;
+    }
+    
+    if (VisitorManager::getInstance().printVisitorBadge(visitorId)) {
+        QMessageBox::information(this, "Success", "Badge printed successfully.");
+    } else {
+        QMessageBox::critical(this, "Error", "Failed to print badge.");
+    }
+}
+
+void CheckInOutDialog::validateConsent()
+{
+    QString visitorId = selectedVisitorId;
+    
+    if (visitorId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please select a visitor to validate consent for.");
+        return;
+    }
+    
+    if (!VisitorManager::getInstance().hasValidConsent(visitorId, "PDPA")) {
+        QMessageBox::warning(this, "Warning", "Visitor does not have valid PDPA consent.");
+    } else {
+        QMessageBox::information(this, "Success", "Visitor has valid PDPA consent.");
+    }
+}
+
+void CheckInOutDialog::getVisitorDetails()
+{
+    QString visitorId = selectedVisitorId;
+    
+    if (visitorId.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please select a visitor to view details.");
+        return;
+    }
+    
+    Visitor visitor = VisitorManager::getInstance().getVisitor(visitorId);
+    if (visitor.getId().isEmpty()) {
+        QMessageBox::critical(this, "Error", "Visitor not found.");
+        return;
+    }
+    
+    QString details = QString("Name: %1\nEmail: %2\nPhone: %3\nCompany: %4\nPurpose: %5")
+                     .arg(visitor.getName())
+                     .arg(visitor.getEmail())
+                     .arg(visitor.getPhone())
+                     .arg(visitor.getCompany())
+                     .arg(visitor.getPurpose());
+    
+    QMessageBox::information(this, "Visitor Details", details);
 } 

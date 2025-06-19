@@ -26,9 +26,18 @@ cd build
 echo "Configuring project with CMake..."
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
+# Get number of CPU cores (cross-platform)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    CORES=$(sysctl -n hw.ncpu)
+else
+    # Linux
+    CORES=$(nproc 2>/dev/null || echo 4)
+fi
+
 # Build the project
-echo "Building project..."
-make -j$(nproc)
+echo "Building project with $CORES cores..."
+make -j$CORES
 
 echo "Build completed successfully!"
 echo "The executable is located at: build/vms"

@@ -314,7 +314,7 @@ VMS:visitor_id:visitor_name:timestamp
 ### Build Process
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/azniosman/vms.git
 cd vms
 
 # Build the project

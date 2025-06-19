@@ -15,19 +15,14 @@ find_package(Qt6 REQUIRED COMPONENTS
     Sql
     Network
     PrintSupport
-    Multimedia
-    MultimediaWidgets
 )
 
 # Find OpenSSL
 find_package(OpenSSL REQUIRED)
 
-# Set source files
+# Set source files (core only for now)
 set(SOURCES
     src/main.cpp
-    src/gui/MainWindow.cpp
-    src/gui/VisitorRegistrationDialog.cpp
-    src/gui/CheckInOutDialog.cpp
     src/core/Visitor.cpp
     src/core/VisitorManager.cpp
     src/database/DatabaseManager.cpp
@@ -39,9 +34,6 @@ set(SOURCES
 
 # Set header files
 set(HEADERS
-    src/gui/MainWindow.h
-    src/gui/VisitorRegistrationDialog.h
-    src/gui/CheckInOutDialog.h
     src/core/Visitor.h
     src/core/VisitorManager.h
     src/database/DatabaseManager.h
@@ -65,8 +57,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Sql
     Qt6::Network
     Qt6::PrintSupport
-    Qt6::Multimedia
-    Qt6::MultimediaWidgets
     OpenSSL::SSL
     OpenSSL::Crypto
 )
@@ -81,21 +71,4 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
-)
-
-# Add resources
-set(RESOURCE_FILES
-    resources/icons/app.png
-    resources/icons/visitor.png
-    resources/icons/checkin.png
-    resources/icons/checkout.png
-    resources/icons/print.png
-    resources/icons/settings.png
-    resources/icons/report.png
-    resources/icons/logout.png
-)
-
-qt_add_resources(${PROJECT_NAME} "resources"
-    PREFIX "/"
-    FILES ${RESOURCE_FILES}
 ) 

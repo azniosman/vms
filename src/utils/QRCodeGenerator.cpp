@@ -1,4 +1,5 @@
 #include "QRCodeGenerator.h"
+#include <QBuffer>
 #include <QPainter>
 #include <QFont>
 #include <QFontMetrics>

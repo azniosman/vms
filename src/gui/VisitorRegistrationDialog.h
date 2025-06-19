@@ -3,13 +3,32 @@
 
 #include <QDialog>
 #include <QLineEdit>
+#include <QTextEdit>
+#include <QPushButton>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QCheckBox>
+#include <QDateEdit>
+#include <QTimeEdit>
 #include <QComboBox>
 #include <QSpinBox>
-#include <QCheckBox>
-#include <QLabel>
-#include <QPushButton>
-#include <QCamera>
-#include <QCameraImageCapture>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QStandardPaths>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QBuffer>
+#include <QCoreApplication>
+#include <QDebug>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 #include "../core/Visitor.h"
 
 class VisitorRegistrationDialog : public QDialog {
@@ -19,22 +38,24 @@ public:
     explicit VisitorRegistrationDialog(QWidget *parent = nullptr);
     ~VisitorRegistrationDialog();
 
+    Visitor getVisitor() const;
+
 private slots:
-    void onCapturePhoto();
-    void onScanId();
-    void onCaptureSignature();
-    void onRegister();
-    void onCancel();
-    void onConsentToggled(bool checked);
-    void onImageCaptured(int id, const QImage &preview);
-    void onCameraError(QCamera::Error error);
+    void onRegisterClicked();
+    void onCancelClicked();
+    void onPhotoCaptureClicked();
+    void onIdScanCaptureClicked();
+    void onSignatureCaptureClicked();
+    void onConsentChanged(bool checked);
 
 private:
     void setupUI();
-    void setupCamera();
-    void validateForm();
-    bool saveVisitor();
+    void setupConnections();
+    bool validateForm();
     void clearForm();
+    void capturePhoto();
+    void captureIdScan();
+    void captureSignature();
 
     // Form fields
     QLineEdit *nameEdit;
@@ -43,31 +64,30 @@ private:
     QLineEdit *companyEdit;
     QLineEdit *idNumberEdit;
     QComboBox *visitorTypeCombo;
-    QLabel *photoLabel;
-    QLabel *idScanLabel;
-    QLabel *signatureLabel;
     QLineEdit *hostIdEdit;
     QLineEdit *purposeEdit;
     QSpinBox *retentionPeriodSpin;
-    QCheckBox *consentCheck;
-
+    QCheckBox *consentCheckBox;
+    
+    // Photo and document capture
+    QLabel *photoLabel;
+    QLabel *idScanLabel;
+    QLabel *signatureLabel;
+    QPushButton *photoCaptureButton;
+    QPushButton *idScanCaptureButton;
+    QPushButton *signatureCaptureButton;
+    
     // Buttons
-    QPushButton *photoButton;
-    QPushButton *scanIdButton;
-    QPushButton *signatureButton;
     QPushButton *registerButton;
     QPushButton *cancelButton;
-
-    // Camera components
-    QCamera *camera;
-    QCameraImageCapture *imageCapture;
+    
+    // Data
+    QPixmap capturedPhoto;
+    QPixmap capturedIdScan;
+    QString capturedSignature;
     bool isCapturingPhoto;
     bool isCapturingId;
-
-    // Captured data
-    QImage photoImage;
-    QImage idScanImage;
-    QString signatureData;
+    bool isCapturingSignature;
 };
 
 #endif // VISITORREGISTRATIONDIALOG_H 

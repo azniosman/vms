@@ -34,7 +34,7 @@ VisitorManager::~VisitorManager()
 {
 }
 
-bool VisitorManager::registerVisitor(Visitor& visitor)
+bool VisitorManager::registerVisitor(const Visitor& visitor)
 {
     if (!validateVisitorData(visitor)) {
         LOG_ERROR("Invalid visitor data", ErrorCategory::UserInput);
@@ -55,34 +55,36 @@ bool VisitorManager::registerVisitor(Visitor& visitor)
                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         QString visitorId = QUuid::createUuid().toString();
-        visitor.setId(visitorId);
+        // Create a copy to modify the ID
+        Visitor visitorCopy = visitor;
+        visitorCopy.setId(visitorId);
 
         QByteArray photoData;
         QBuffer photoBuffer(&photoData);
         photoBuffer.open(QIODevice::WriteOnly);
-        visitor.getPhoto().save(&photoBuffer, "PNG");
+        visitorCopy.getPhoto().save(&photoBuffer, "PNG");
 
         QByteArray idScanData;
         QBuffer idScanBuffer(&idScanData);
         idScanBuffer.open(QIODevice::WriteOnly);
-        visitor.getIdScan().save(&idScanBuffer, "PNG");
+        visitorCopy.getIdScan().save(&idScanBuffer, "PNG");
 
         query.addBindValue(visitorId);
-        query.addBindValue(visitor.getName());
-        query.addBindValue(visitor.getEmail());
-        query.addBindValue(visitor.getPhone());
-        query.addBindValue(visitor.getCompany());
-        query.addBindValue(visitor.getIdentificationNumber());
-        query.addBindValue(static_cast<int>(visitor.getType()));
+        query.addBindValue(visitorCopy.getName());
+        query.addBindValue(visitorCopy.getEmail());
+        query.addBindValue(visitorCopy.getPhone());
+        query.addBindValue(visitorCopy.getCompany());
+        query.addBindValue(visitorCopy.getIdentificationNumber());
+        query.addBindValue(static_cast<int>(visitorCopy.getType()));
         query.addBindValue(photoData);
         query.addBindValue(idScanData);
-        query.addBindValue(visitor.getSignature());
-        query.addBindValue(visitor.getHostId());
-        query.addBindValue(visitor.getPurpose());
+        query.addBindValue(visitorCopy.getSignature());
+        query.addBindValue(visitorCopy.getHostId());
+        query.addBindValue(visitorCopy.getPurpose());
         query.addBindValue(QDateTime::currentDateTime());
         query.addBindValue(QDateTime::currentDateTime());
-        query.addBindValue(visitor.hasConsent());
-        query.addBindValue(visitor.getRetentionPeriod());
+        query.addBindValue(visitorCopy.hasConsent());
+        query.addBindValue(visitorCopy.getRetentionPeriod());
 
         if (!query.exec()) {
             throw std::runtime_error(query.lastError().text().toStdString());
@@ -177,7 +179,7 @@ bool VisitorManager::updateVisitor(const Visitor& visitor)
     }
 }
 
-bool VisitorManager::checkIn(const QString& visitorId, const QString& hostId)
+bool VisitorManager::checkInVisitor(const QString& visitorId, const QString& hostId)
 {
     QSqlDatabase db = DatabaseManager::getInstance().getConnection();
     QSqlQuery query(db);
@@ -204,6 +206,15 @@ bool VisitorManager::checkIn(const QString& visitorId, const QString& hostId)
             throw std::runtime_error(query.lastError().text().toStdString());
         }
 
+        // Update visitor status
+        query.prepare("UPDATE visitors SET status = 'checked_in', updated_at = ? WHERE id = ?");
+        query.addBindValue(QDateTime::currentDateTime());
+        query.addBindValue(visitorId);
+
+        if (!query.exec()) {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+
         // Notify host
         notifyHost(hostId, "Your visitor has arrived");
 
@@ -224,7 +235,7 @@ bool VisitorManager::checkIn(const QString& visitorId, const QString& hostId)
     }
 }
 
-bool VisitorManager::checkOut(const QString& visitorId)
+bool VisitorManager::checkOutVisitor(const QString& visitorId)
 {
     QSqlDatabase db = DatabaseManager::getInstance().getConnection();
     QSqlQuery query(db);
@@ -235,6 +246,15 @@ bool VisitorManager::checkOut(const QString& visitorId)
         query.prepare("UPDATE visits SET check_out_time = ? "
                      "WHERE visitor_id = ? AND check_out_time IS NULL");
 
+        query.addBindValue(QDateTime::currentDateTime());
+        query.addBindValue(visitorId);
+
+        if (!query.exec()) {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+
+        // Update visitor status
+        query.prepare("UPDATE visitors SET status = 'checked_out', updated_at = ? WHERE id = ?");
         query.addBindValue(QDateTime::currentDateTime());
         query.addBindValue(visitorId);
 
@@ -285,26 +305,8 @@ bool VisitorManager::addToBlacklist(const QString& visitorId, const QString& rea
 
 bool VisitorManager::updateConsent(const QString& visitorId, bool consent)
 {
-    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
-    QSqlQuery query(db);
-
-    query.prepare("UPDATE visitors SET consent = ?, updated_at = ? WHERE id = ?");
-
-    query.addBindValue(consent);
-    query.addBindValue(QDateTime::currentDateTime());
-    query.addBindValue(visitorId);
-
-    if (!query.exec()) {
-        LOG_ERROR(QString("Failed to update visitor consent: %1").arg(query.lastError().text()), 
-                 ErrorCategory::Database);
-        return false;
-    }
-
-    logVisitorActivity(visitorId, consent ? "CONSENT_GRANTED" : "CONSENT_REVOKED");
-    emit consentUpdated(visitorId, consent);
-    LOG_INFO(QString("Visitor consent updated: %1 - %2").arg(visitorId).arg(consent ? "granted" : "revoked"), 
-             ErrorCategory::Database);
-    return true;
+    // Removed duplicate updateConsent method - using recordConsent instead
+    return false;
 }
 
 void VisitorManager::purgeExpiredRecords()
@@ -387,32 +389,54 @@ bool VisitorManager::notifyHost(const QString& hostId, const QString& message)
     return true;
 }
 
-QString VisitorManager::generateQRCode(const QString& visitorId)
+bool VisitorManager::generateQRCode(const QString& visitorId)
 {
     try {
-        // Get visitor information for QR code
-        Visitor* visitor = getVisitor(visitorId);
-        if (!visitor) {
-            throw std::runtime_error("Visitor not found");
+        Visitor visitor = getVisitor(visitorId);
+        if (visitor.getId().isEmpty()) {
+            LOG_ERROR(QString("Visitor not found for QR code generation: %1").arg(visitorId), ErrorCategory::UserInput);
+            return false;
         }
 
-        QImage qrCode = QRCodeGenerator::getInstance().generateVisitorQRCode(visitorId, visitor->getName());
-        
-        if (qrCode.isNull()) {
-            throw std::runtime_error("Failed to generate QR code");
+        // Create QR code data
+        QJsonObject qrData;
+        qrData["visitor_id"] = visitorId;
+        qrData["name"] = visitor.getName();
+        qrData["company"] = visitor.getCompany();
+        qrData["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+        QJsonDocument doc(qrData);
+        QString qrCodeData = doc.toJson(QJsonDocument::Compact);
+
+        // Generate QR code image
+        QImage qrCodeImage = QRCodeGenerator::getInstance().generateQRCode(qrCodeData);
+        if (qrCodeImage.isNull()) {
+            LOG_ERROR(QString("Failed to generate QR code for visitor: %1").arg(visitorId), ErrorCategory::System);
+            return false;
         }
+
+        // Convert QImage to QPixmap
+        QPixmap qrCodePixmap = QPixmap::fromImage(qrCodeImage);
 
         // Save QR code to file
         QString qrCodePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) 
-                           + "/qrcodes/" + visitorId + ".png";
-        QRCodeGenerator::getInstance().saveQRCode(qrCode, qrCodePath);
-
-        LOG_INFO(QString("QR code generated for visitor: %1").arg(visitorId), ErrorCategory::System);
-        return qrCodePath;
+                           + "/vms/qr_codes/";
+        QDir().mkpath(qrCodePath);
         
-    } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate QR code: %1").arg(e.what()), ErrorCategory::System);
-        return QString();
+        QString fileName = QString("qr_%1.png").arg(visitorId);
+        QString filePath = qrCodePath + fileName;
+
+        if (!qrCodePixmap.save(filePath, "PNG")) {
+            LOG_ERROR(QString("Failed to save QR code to file: %1").arg(filePath), ErrorCategory::FileSystem);
+            return false;
+        }
+
+        LOG_INFO(QString("QR code generated successfully for visitor: %1").arg(visitorId), ErrorCategory::System);
+        return true;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR(QString("Exception in QR code generation: %1").arg(e.what()), ErrorCategory::System);
+        return false;
     }
 }
 
@@ -430,53 +454,304 @@ bool VisitorManager::printVisitorBadge(const QString& visitorId)
     }
 }
 
-// Placeholder implementations for other methods
-Visitor* VisitorManager::getVisitor(const QString& visitorId)
+Visitor VisitorManager::getVisitor(const QString& visitorId)
 {
-    // TODO: Implement visitor retrieval
-    return nullptr;
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT * FROM visitors WHERE id = ?");
+    query.addBindValue(visitorId);
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to get visitor: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return Visitor();
+    }
+
+    if (query.next()) {
+        return createVisitorFromQuery(query);
+    }
+
+    return Visitor();
 }
 
-QList<Visitor*> VisitorManager::searchVisitors(const QString& query)
+QList<Visitor> VisitorManager::getAllVisitors()
 {
-    // TODO: Implement visitor search
-    return QList<Visitor*>();
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT * FROM visitors ORDER BY created_at DESC");
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to get all visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QList<Visitor>();
+    }
+
+    QList<Visitor> visitors;
+    while (query.next()) {
+        visitors.append(createVisitorFromQuery(query));
+    }
+
+    return visitors;
 }
 
-QList<Visitor*> VisitorManager::getCurrentVisitors()
+QList<Visitor> VisitorManager::searchVisitors(const QString& searchTerm)
 {
-    // TODO: Implement current visitors retrieval
-    return QList<Visitor*>();
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT * FROM visitors WHERE "
+                 "name LIKE ? OR email LIKE ? OR phone LIKE ? OR company LIKE ? "
+                 "ORDER BY created_at DESC");
+    
+    QString likePattern = "%" + searchTerm + "%";
+    query.addBindValue(likePattern);
+    query.addBindValue(likePattern);
+    query.addBindValue(likePattern);
+    query.addBindValue(likePattern);
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to search visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QList<Visitor>();
+    }
+
+    QList<Visitor> visitors;
+    while (query.next()) {
+        visitors.append(createVisitorFromQuery(query));
+    }
+
+    return visitors;
 }
 
-QDateTime VisitorManager::getCheckInTime(const QString& visitorId)
+QList<Visitor> VisitorManager::getCheckedInVisitors()
 {
-    // TODO: Implement check-in time retrieval
-    return QDateTime();
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT v.* FROM visitors v "
+                 "INNER JOIN visits vs ON v.id = vs.visitor_id "
+                 "WHERE vs.check_out_time IS NULL "
+                 "ORDER BY vs.check_in_time DESC");
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to get checked in visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QList<Visitor>();
+    }
+
+    QList<Visitor> visitors;
+    while (query.next()) {
+        visitors.append(createVisitorFromQuery(query));
+    }
+
+    return visitors;
 }
 
-QDateTime VisitorManager::getCheckOutTime(const QString& visitorId)
+bool VisitorManager::isVisitorCheckedIn(const QString& visitorId)
 {
-    // TODO: Implement check-out time retrieval
-    return QDateTime();
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT COUNT(*) FROM visits "
+                 "WHERE visitor_id = ? AND check_out_time IS NULL");
+    query.addBindValue(visitorId);
+
+    if (!query.exec() || !query.next()) {
+        LOG_ERROR(QString("Failed to check visitor status: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return false;
+    }
+
+    return query.value(0).toInt() > 0;
+}
+
+QList<QPair<QString, QString>> VisitorManager::getBlacklist()
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT visitor_id, reason FROM blacklist ORDER BY created_at DESC");
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to get blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QList<QPair<QString, QString>>();
+    }
+
+    QList<QPair<QString, QString>> blacklist;
+    while (query.next()) {
+        blacklist.append(qMakePair(
+            query.value("visitor_id").toString(),
+            query.value("reason").toString()
+        ));
+    }
+
+    return blacklist;
 }
 
 bool VisitorManager::isBlacklisted(const QString& visitorId)
 {
-    // TODO: Implement blacklist checking
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT COUNT(*) FROM blacklist WHERE visitor_id = ?");
+    query.addBindValue(visitorId);
+
+    if (!query.exec() || !query.next()) {
+        LOG_ERROR(QString("Failed to check blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return false;
+    }
+
+    return query.value(0).toInt() > 0;
+}
+
+void VisitorManager::logActivity(const QString& action, const QString& details, const QString& userId)
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("INSERT INTO audit_log (id, action, details, user_id, created_at) "
+                 "VALUES (?, ?, ?, ?, ?)");
+
+    query.addBindValue(QUuid::createUuid().toString());
+    query.addBindValue(action);
+    query.addBindValue(details);
+    query.addBindValue(userId);
+    query.addBindValue(QDateTime::currentDateTime());
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to log activity: %1").arg(query.lastError().text()), ErrorCategory::Database);
+    }
+}
+
+// Helper method to create Visitor object from database query
+Visitor VisitorManager::createVisitorFromQuery(const QSqlQuery& query)
+{
+    Visitor visitor;
+    visitor.setId(query.value("id").toString());
+    visitor.setName(query.value("name").toString());
+    visitor.setEmail(query.value("email").toString());
+    visitor.setPhone(query.value("phone").toString());
+    visitor.setCompany(query.value("company").toString());
+    visitor.setIdentificationNumber(query.value("identification_number").toString());
+    visitor.setType(static_cast<Visitor::VisitorType>(query.value("type").toInt()));
+    visitor.setHostId(query.value("host_id").toString());
+    visitor.setPurpose(query.value("purpose").toString());
+    visitor.setConsent(query.value("consent").toBool());
+    visitor.setRetentionPeriod(query.value("retention_period").toInt());
+
+    // Load photo and ID scan from BLOB data
+    QByteArray photoData = query.value("photo").toByteArray();
+    if (!photoData.isEmpty()) {
+        QPixmap photo;
+        photo.loadFromData(photoData);
+        visitor.setPhoto(photo.toImage());
+    }
+
+    QByteArray idScanData = query.value("id_scan").toByteArray();
+    if (!idScanData.isEmpty()) {
+        QPixmap idScan;
+        idScan.loadFromData(idScanData);
+        visitor.setIdScan(idScan.toImage());
+    }
+
+    return visitor;
+}
+
+QDateTime VisitorManager::getCheckInTime(const QString& visitorId)
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT check_in_time FROM visits "
+                 "WHERE visitor_id = ? AND check_out_time IS NULL "
+                 "ORDER BY check_in_time DESC LIMIT 1");
+    query.addBindValue(visitorId);
+
+    if (!query.exec() || !query.next()) {
+        LOG_ERROR(QString("Failed to get check-in time: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QDateTime();
+    }
+
+    return query.value("check_in_time").toDateTime();
+}
+
+QDateTime VisitorManager::getCheckOutTime(const QString& visitorId)
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT check_out_time FROM visits "
+                 "WHERE visitor_id = ? AND check_out_time IS NOT NULL "
+                 "ORDER BY check_out_time DESC LIMIT 1");
+    query.addBindValue(visitorId);
+
+    if (!query.exec() || !query.next()) {
+        LOG_ERROR(QString("Failed to get check-out time: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return QDateTime();
+    }
+
+    return query.value("check_out_time").toDateTime();
+}
+
+bool VisitorManager::recordConsent(const QString& visitorId, const QString& consentType, bool granted)
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    db.transaction();
+
+    try {
+        query.prepare("INSERT OR REPLACE INTO consent_records "
+                     "(visitor_id, consent_type, granted, recorded_at) "
+                     "VALUES (?, ?, ?, ?)");
+        query.addBindValue(visitorId);
+        query.addBindValue(consentType);
+        query.addBindValue(granted);
+        query.addBindValue(QDateTime::currentDateTime());
+
+        if (!query.exec()) {
+            throw std::runtime_error(query.lastError().text().toStdString());
+        }
+
+        if (!db.commit()) {
+            throw std::runtime_error("Failed to commit transaction");
+        }
+
+        emit consentUpdated(visitorId, granted);
+        LOG_INFO(QString("Consent recorded for visitor: %1, type: %2, granted: %3")
+                .arg(visitorId).arg(consentType).arg(granted), ErrorCategory::Database);
+        return true;
+    }
+    catch (const std::exception& e) {
+        db.rollback();
+        LOG_ERROR(QString("Failed to record consent: %1").arg(e.what()), ErrorCategory::Database);
+        return false;
+    }
+}
+
+bool VisitorManager::hasValidConsent(const QString& visitorId, const QString& consentType)
+{
+    QSqlDatabase db = DatabaseManager::getInstance().getConnection();
+    QSqlQuery query(db);
+
+    query.prepare("SELECT granted, recorded_at FROM consent_records "
+                 "WHERE visitor_id = ? AND consent_type = ? "
+                 "ORDER BY recorded_at DESC LIMIT 1");
+    query.addBindValue(visitorId);
+    query.addBindValue(consentType);
+
+    if (!query.exec()) {
+        LOG_ERROR(QString("Failed to check consent: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        return false;
+    }
+
+    if (query.next()) {
+        bool granted = query.value("granted").toBool();
+        QDateTime recordedAt = query.value("recorded_at").toDateTime();
+        
+        // Check if consent is still valid (within retention period)
+        QDateTime expiryDate = recordedAt.addDays(365); // Default 1 year
+        return granted && QDateTime::currentDateTime() < expiryDate;
+    }
+
     return false;
-}
-
-QList<Visitor*> VisitorManager::getBlacklistedVisitors()
-{
-    // TODO: Implement blacklisted visitors retrieval
-    return QList<Visitor*>();
-}
-
-bool VisitorManager::hasValidConsent(const QString& visitorId)
-{
-    // TODO: Implement consent validation
-    return true;
 }
 
 bool VisitorManager::exportVisitorData(const QString& visitorId, const QString& format)
