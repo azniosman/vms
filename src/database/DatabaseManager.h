@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QSqlDatabase>
 #include <QMutex>
+#include <QSettings>
+#include <QFileInfo>
 #include <memory>
 
 class DatabaseManager : public QObject {
@@ -26,8 +28,13 @@ public:
     bool updateUserConsent(const QString& userId, const QString& purpose, bool consent);
     
     // Connection management
+    QSqlDatabase getDatabase();
     QSqlDatabase getConnection();
     void releaseConnection(const QString& connectionName);
+    
+    // Security
+    bool setEncryptionKey(const QString& key);
+    QString generateDatabaseKey();
 
 private:
     explicit DatabaseManager(QObject *parent = nullptr);
@@ -40,6 +47,11 @@ private:
     bool initializeTables();
     bool initializeEncryption();
     bool validateSchema();
+    bool createSecurityTables();
+    bool createVisitorTables();
+    bool createReportTables();
+    QString getStoredEncryptionKey();
+    void storeEncryptionKey(const QString& key);
     
     static DatabaseManager* instance;
     static QMutex instanceMutex;

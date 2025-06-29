@@ -1,9 +1,0 @@
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/vms.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/edit_cache.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/rebuild_cache.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/list_install_components.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/install.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/install/local.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/install/strip.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/vms_autogen_timestamp_deps.dir
-/Users/azni/Documents/augment-projects/vms/build/CMakeFiles/vms_autogen.dir

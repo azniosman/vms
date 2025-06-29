@@ -346,21 +346,98 @@ void VisitorManager::purgeExpiredRecords()
 
 bool VisitorManager::validateVisitorData(const Visitor& visitor)
 {
-    if (visitor.getName().isEmpty() || visitor.getEmail().isEmpty()) {
-        LOG_WARNING("Visitor validation failed: missing required fields", ErrorCategory::UserInput);
+    // Check rate limiting first
+    if (!checkRateLimit("validation")) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Rate limit exceeded for visitor validation");
         return false;
     }
-
+    
+    // Validate required fields
+    if (visitor.getName().isEmpty()) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Visitor name is required");
+        return false;
+    }
+    
+    if (visitor.getEmail().isEmpty()) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Visitor email is required");
+        return false;
+    }
+    
+    // Validate name
+    if (!validateName(visitor.getName())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid visitor name format");
+        return false;
+    }
+    
+    // Validate email
+    if (!validateEmail(visitor.getEmail())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid email format");
+        return false;
+    }
+    
+    // Validate phone if provided
+    if (!visitor.getPhone().isEmpty() && !validatePhoneNumber(visitor.getPhone())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid phone number format");
+        return false;
+    }
+    
+    // Validate company if provided
+    if (!visitor.getCompany().isEmpty() && !validateCompany(visitor.getCompany())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid company name");
+        return false;
+    }
+    
+    // Validate ID number if provided
+    if (!visitor.getIdentificationNumber().isEmpty() && !validateIdNumber(visitor.getIdentificationNumber())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid identification number");
+        return false;
+    }
+    
+    // Validate purpose if provided
+    if (!visitor.getPurpose().isEmpty() && !validatePurpose(visitor.getPurpose())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid purpose description");
+        return false;
+    }
+    
+    // Validate image data sizes
+    if (!visitor.getPhoto().isEmpty() && !validateDataSize(visitor.getPhoto(), MAX_IMAGE_SIZE)) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Photo size exceeds maximum limit");
+        return false;
+    }
+    
+    if (!visitor.getIdScan().isEmpty() && !validateDataSize(visitor.getIdScan(), MAX_IMAGE_SIZE)) {
+        ErrorHandler::getInstance().logError("VisitorManager", "ID scan size exceeds maximum limit");
+        return false;
+    }
+    
+    if (!visitor.getSignature().isEmpty() && !validateDataSize(visitor.getSignature(), MAX_IMAGE_SIZE)) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Signature size exceeds maximum limit");
+        return false;
+    }
+    
+    // Validate image data if provided
+    if (!visitor.getPhoto().isEmpty() && !isValidImageData(visitor.getPhoto())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid photo data");
+        return false;
+    }
+    
+    if (!visitor.getIdScan().isEmpty() && !isValidImageData(visitor.getIdScan())) {
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid ID scan data");
+        return false;
+    }
+    
+    // Validate consent
     if (!visitor.hasConsent()) {
-        LOG_WARNING("Visitor validation failed: consent not provided", ErrorCategory::UserInput);
+        ErrorHandler::getInstance().logError("VisitorManager", "Visitor consent is required");
         return false;
     }
-
-    if (visitor.getRetentionPeriod() <= 0) {
-        LOG_WARNING("Visitor validation failed: invalid retention period", ErrorCategory::UserInput);
+    
+    // Validate retention period
+    if (visitor.getRetentionPeriod() <= 0 || visitor.getRetentionPeriod() > 3650) { // Max 10 years
+        ErrorHandler::getInstance().logError("VisitorManager", "Invalid retention period");
         return false;
     }
-
+    
     return true;
 }
 
@@ -614,6 +691,285 @@ Visitor VisitorManager::createVisitorFromQuery(const QSqlQuery& query)
     }
 
     return visitor;
+}
+
+bool VisitorManager::validateEmail(const QString& email)
+{
+    if (email.length() > MAX_EMAIL_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(email)) {
+        return false;
+    }
+    
+    // RFC 5322 compliant email validation
+    QRegularExpression emailRegex(R"(^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$)");
+    return emailRegex.match(email).hasMatch();
+}
+
+bool VisitorManager::validatePhoneNumber(const QString& phone)
+{
+    if (phone.length() > MAX_PHONE_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(phone)) {
+        return false;
+    }
+    
+    // Allow international phone numbers with optional + and spaces/dashes
+    QRegularExpression phoneRegex(R"(^[\+]?[1-9][\d\s\-\(\)]{7,19}$)");
+    return phoneRegex.match(phone.simplified()).hasMatch();
+}
+
+bool VisitorManager::validateName(const QString& name)
+{
+    if (name.isEmpty() || name.length() > MAX_NAME_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(name)) {
+        return false;
+    }
+    
+    // Check for XSS attempts
+    if (containsXssAttempt(name)) {
+        return false;
+    }
+    
+    // Only allow letters, spaces, hyphens, apostrophes, and dots
+    QRegularExpression nameRegex(R"(^[a-zA-ZÀ-ÿ\s\-\.']{1,100}$)");
+    return nameRegex.match(name).hasMatch();
+}
+
+bool VisitorManager::validateCompany(const QString& company)
+{
+    if (company.length() > MAX_COMPANY_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(company)) {
+        return false;
+    }
+    
+    // Check for XSS attempts
+    if (containsXssAttempt(company)) {
+        return false;
+    }
+    
+    // Allow alphanumeric, spaces, common punctuation
+    QRegularExpression companyRegex(R"(^[a-zA-Z0-9À-ÿ\s\-\.,&()]{1,200}$)");
+    return companyRegex.match(company).hasMatch();
+}
+
+bool VisitorManager::validateIdNumber(const QString& idNumber)
+{
+    if (idNumber.isEmpty() || idNumber.length() > MAX_ID_NUMBER_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(idNumber)) {
+        return false;
+    }
+    
+    // Allow alphanumeric and common ID separators
+    QRegularExpression idRegex(R"(^[a-zA-Z0-9\-\s]{1,50}$)");
+    return idRegex.match(idNumber).hasMatch();
+}
+
+bool VisitorManager::validatePurpose(const QString& purpose)
+{
+    if (purpose.length() > MAX_PURPOSE_LENGTH) {
+        return false;
+    }
+    
+    // Check for SQL injection patterns
+    if (containsSqlInjection(purpose)) {
+        return false;
+    }
+    
+    // Check for XSS attempts
+    if (containsXssAttempt(purpose)) {
+        return false;
+    }
+    
+    // Allow most characters but restrict script tags and SQL keywords
+    QString cleanPurpose = sanitizeInput(purpose);
+    return cleanPurpose == purpose; // If sanitization changed it, it was invalid
+}
+
+QString VisitorManager::sanitizeInput(const QString& input)
+{
+    QString sanitized = input;
+    
+    // Remove null bytes
+    sanitized.remove(QChar('\0'));
+    
+    // Remove control characters except tab, newline, carriage return
+    for (int i = 0; i < sanitized.length(); ++i) {
+        QChar ch = sanitized.at(i);
+        if (ch.category() == QChar::Other_Control && 
+            ch != '\t' && ch != '\n' && ch != '\r') {
+            sanitized.remove(i, 1);
+            --i;
+        }
+    }
+    
+    // Trim whitespace
+    sanitized = sanitized.trimmed();
+    
+    return sanitized;
+}
+
+QString VisitorManager::sanitizeHtml(const QString& input)
+{
+    QString sanitized = input;
+    
+    // Replace HTML entities
+    sanitized.replace("&", "&amp;");
+    sanitized.replace("<", "&lt;");
+    sanitized.replace(">", "&gt;");
+    sanitized.replace("\"", "&quot;");
+    sanitized.replace("'", "&#x27;");
+    sanitized.replace("/", "&#x2F;");
+    
+    return sanitized;
+}
+
+bool VisitorManager::isValidImageData(const QByteArray& data)
+{
+    if (data.isEmpty()) {
+        return true; // Empty data is valid (optional field)
+    }
+    
+    // Check for common image file signatures
+    QList<QByteArray> validSignatures = {
+        QByteArray::fromHex("FFD8FF"),     // JPEG
+        QByteArray::fromHex("89504E47"),   // PNG
+        QByteArray::fromHex("424D"),       // BMP
+        QByteArray::fromHex("47494638"),   // GIF
+        QByteArray::fromHex("52494646")    // WEBP (RIFF)
+    };
+    
+    for (const QByteArray& signature : validSignatures) {
+        if (data.startsWith(signature)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+bool VisitorManager::isSecureFileName(const QString& fileName)
+{
+    if (fileName.isEmpty() || fileName.length() > 255) {
+        return false;
+    }
+    
+    // Check for path traversal attempts
+    if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+        return false;
+    }
+    
+    // Check for dangerous file extensions
+    QStringList dangerousExtensions = {
+        "exe", "bat", "cmd", "com", "pif", "scr", "vbs", "js", "jar", "app", "deb", "pkg", "dmg"
+    };
+    
+    QString extension = fileName.split('.').last().toLower();
+    if (dangerousExtensions.contains(extension)) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool VisitorManager::checkRateLimit(const QString& identifier)
+{
+    QMutexLocker locker(&rateLimitMutex);
+    
+    QDateTime now = QDateTime::currentDateTime();
+    QDateTime oneMinuteAgo = now.addSecs(-60);
+    
+    // Clean up old entries
+    auto it = rateLimitTracker.begin();
+    while (it != rateLimitTracker.end()) {
+        if (it.value() < oneMinuteAgo) {
+            it = rateLimitTracker.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    // Count requests in the last minute
+    int requestCount = 0;
+    for (auto it = rateLimitTracker.begin(); it != rateLimitTracker.end(); ++it) {
+        if (it.key().startsWith(identifier)) {
+            requestCount++;
+        }
+    }
+    
+    if (requestCount >= MAX_REQUESTS_PER_MINUTE) {
+        return false;
+    }
+    
+    // Record this request
+    QString requestKey = QString("%1_%2").arg(identifier).arg(QDateTime::currentMSecsSinceEpoch());
+    rateLimitTracker[requestKey] = now;
+    
+    return true;
+}
+
+bool VisitorManager::validateDataSize(const QByteArray& data, int maxSize)
+{
+    return data.size() <= maxSize;
+}
+
+bool VisitorManager::containsSqlInjection(const QString& input)
+{
+    QString lowerInput = input.toLower();
+    
+    // Common SQL injection patterns
+    QStringList sqlPatterns = {
+        "union select", "drop table", "delete from", "insert into",
+        "update set", "create table", "alter table", "exec ",
+        "execute ", "sp_", "xp_", "--;", "/*", "*/", "'", "\""
+    };
+    
+    for (const QString& pattern : sqlPatterns) {
+        if (lowerInput.contains(pattern)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+bool VisitorManager::containsXssAttempt(const QString& input)
+{
+    QString lowerInput = input.toLower();
+    
+    // Common XSS patterns
+    QStringList xssPatterns = {
+        "<script", "</script>", "javascript:", "onload=", "onerror=",
+        "onclick=", "onmouseover=", "onfocus=", "onblur=", "onchange=",
+        "onsubmit=", "iframe", "object", "embed", "applet", "meta",
+        "link", "style", "expression(", "url(", "import"
+    };
+    
+    for (const QString& pattern : xssPatterns) {
+        if (lowerInput.contains(pattern)) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 QDateTime VisitorManager::getCheckInTime(const QString& visitorId)

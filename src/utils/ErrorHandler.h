@@ -43,15 +43,35 @@ public:
     static ErrorHandler& getInstance();
 
     // Error logging
-    void logError(const QString& message, 
+    void logError(const QString& source, const QString& message, 
                   ErrorSeverity severity = ErrorSeverity::Error,
                   ErrorCategory category = ErrorCategory::Unknown,
                   const QString& details = QString());
     
-    void logError(const QString& message, 
-                  const QString& details,
-                  ErrorSeverity severity = ErrorSeverity::Error,
-                  ErrorCategory category = ErrorCategory::Unknown);
+    void logInfo(const QString& source, const QString& message,
+                 const QString& details = QString());
+    
+    void logWarning(const QString& source, const QString& message,
+                    const QString& details = QString());
+    
+    void logCritical(const QString& source, const QString& message,
+                     const QString& details = QString());
+    
+    // Security-specific logging
+    void logSecurityEvent(const QString& eventType, const QString& details,
+                         const QString& userId = QString(),
+                         const QString& sessionId = QString(),
+                         const QString& ipAddress = QString());
+    
+    void logDataAccess(const QString& table, const QString& recordId,
+                      const QString& accessType, const QString& userId,
+                      const QString& purpose = QString());
+    
+    void logFailedAuthentication(const QString& username, const QString& ipAddress,
+                                const QString& reason = QString());
+    
+    void logPrivilegeEscalation(const QString& userId, const QString& attemptedAction,
+                               const QString& sessionId = QString());
 
     // Error handling
     void handleException(const std::exception& e, 
@@ -103,13 +123,43 @@ private:
     QString getStackTrace();
     void notifyAdministrator(const ErrorInfo& error);
     QString formatErrorMessage(const ErrorInfo& error);
+    
+    // Security monitoring
+    void detectAnomalies();
+    void checkSecurityThresholds();
+    bool isRateLimited(const QString& source);
+    void sanitizeLogData(QString& data);
+    
+    // File rotation
+    void rotateLogFiles();
+    void archiveOldLogs();
+    
+    QMutex logMutex;
+    QHash<QString, QDateTime> rateLimitMap;
+    
+    // Configuration
+    int maxLogFileSize;
+    int maxLogFiles;
+    QString logDirectory;
+    bool enableFileLogging;
+    bool enableDatabaseLogging;
+    bool enableSyslog;
+    
+    // Security thresholds
+    int maxFailedLoginsPerMinute;
+    int maxErrorsPerMinute;
+    int maxDataAccessPerHour;
 };
 
 // Convenience macros
-#define LOG_ERROR(msg, cat) ErrorHandler::getInstance().logError(msg, ErrorSeverity::Error, cat)
-#define LOG_WARNING(msg, cat) ErrorHandler::getInstance().logError(msg, ErrorSeverity::Warning, cat)
-#define LOG_INFO(msg, cat) ErrorHandler::getInstance().logError(msg, ErrorSeverity::Info, cat)
-#define LOG_CRITICAL(msg, cat) ErrorHandler::getInstance().logError(msg, ErrorSeverity::Critical, cat)
+#define LOG_ERROR(source, msg) ErrorHandler::getInstance().logError(source, msg)
+#define LOG_WARNING(source, msg) ErrorHandler::getInstance().logWarning(source, msg)
+#define LOG_INFO(source, msg) ErrorHandler::getInstance().logInfo(source, msg)
+#define LOG_CRITICAL(source, msg) ErrorHandler::getInstance().logCritical(source, msg)
+
+#define LOG_SECURITY_EVENT(event, details) ErrorHandler::getInstance().logSecurityEvent(event, details)
+#define LOG_DATA_ACCESS(table, id, type, user) ErrorHandler::getInstance().logDataAccess(table, id, type, user)
+#define LOG_FAILED_AUTH(user, ip, reason) ErrorHandler::getInstance().logFailedAuthentication(user, ip, reason)
 
 #define HANDLE_EXCEPTION(e, cat) ErrorHandler::getInstance().handleException(e, cat)
 #define HANDLE_SYSTEM_ERROR(code, op, cat) ErrorHandler::getInstance().handleSystemError(code, op, cat)

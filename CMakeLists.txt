@@ -7,21 +7,30 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Disable OpenGL to avoid AGL framework issues on macOS
-set(QT_DISABLE_OPENGL ON)
-set(QT_DEFAULT_QPA_PLUGIN offscreen)
+# Enable GUI components
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_WIDGETS_LIB")
+
+# Security compiler flags
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-strong -D_FORTIFY_SOURCE=2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wformat -Wformat-security")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now")
+endif()
 
 # Find required Qt packages
 find_package(Qt6 REQUIRED COMPONENTS 
     Core
+    Widgets
     Sql
     Network
+    PrintSupport
 )
 
-# Find OpenSSL
+# Find required packages
+find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-# Set source files (core only for now)
+# Set source files
 set(SOURCES
     src/main.cpp
     src/core/Visitor.cpp
@@ -30,6 +39,9 @@ set(SOURCES
     src/security/SecurityManager.cpp
     src/utils/ErrorHandler.cpp
     src/reports/ReportManager.cpp
+    src/gui/MainWindow.cpp
+    src/gui/VisitorRegistrationDialog.cpp
+    src/gui/CheckInOutDialog.cpp
 )
 
 # Set header files
@@ -40,6 +52,15 @@ set(HEADERS
     src/security/SecurityManager.h
     src/utils/ErrorHandler.h
     src/reports/ReportManager.h
+    src/gui/MainWindow.h
+    src/gui/VisitorRegistrationDialog.h
+    src/gui/CheckInOutDialog.h
+)
+
+# Set resource files
+set(RESOURCES
+    resources/icons.qrc
+    resources/styles.qrc
 )
 
 # Create executable
@@ -51,10 +72,13 @@ add_executable(${PROJECT_NAME}
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
+    Qt6::Widgets
     Qt6::Sql
     Qt6::Network
+    Qt6::PrintSupport
     OpenSSL::SSL
     OpenSSL::Crypto
+    Threads::Threads
 )
 
 # Include directories
