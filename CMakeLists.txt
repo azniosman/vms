@@ -27,7 +27,6 @@ find_package(Qt6 REQUIRED COMPONENTS
 )
 
 # Find required packages
-find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Set source files
@@ -38,10 +37,8 @@ set(SOURCES
     src/database/DatabaseManager.cpp
     src/security/SecurityManager.cpp
     src/utils/ErrorHandler.cpp
+    src/utils/ConfigManager.cpp
     src/reports/ReportManager.cpp
-    src/gui/MainWindow.cpp
-    src/gui/VisitorRegistrationDialog.cpp
-    src/gui/CheckInOutDialog.cpp
 )
 
 # Set header files
@@ -51,10 +48,8 @@ set(HEADERS
     src/database/DatabaseManager.h
     src/security/SecurityManager.h
     src/utils/ErrorHandler.h
+    src/utils/ConfigManager.h
     src/reports/ReportManager.h
-    src/gui/MainWindow.h
-    src/gui/VisitorRegistrationDialog.h
-    src/gui/CheckInOutDialog.h
 )
 
 # Set resource files
@@ -78,7 +73,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::PrintSupport
     OpenSSL::SSL
     OpenSSL::Crypto
-    Threads::Threads
 )
 
 # Include directories
