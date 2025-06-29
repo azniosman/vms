@@ -36,7 +36,7 @@ ErrorHandler::~ErrorHandler()
 {
 }
 
-void ErrorHandler::logError(const QString& message, 
+void ErrorHandler::logError(const QString& source, const QString& message, 
                            ErrorSeverity severity,
                            ErrorCategory category,
                            const QString& details)
@@ -46,7 +46,7 @@ void ErrorHandler::logError(const QString& message,
     error.details = details;
     error.severity = severity;
     error.category = category;
-    error.source = QObject::tr("VMS System");
+    error.source = source;
     error.timestamp = QDateTime::currentDateTime();
     error.stackTrace = getStackTrace();
     
@@ -79,17 +79,27 @@ void ErrorHandler::logError(const QString& message,
     }
 }
 
-void ErrorHandler::logError(const QString& message, 
-                           const QString& details,
-                           ErrorSeverity severity,
-                           ErrorCategory category)
+void ErrorHandler::logInfo(const QString& source, const QString& message,
+                          const QString& details)
 {
-    logError(message, severity, category, details);
+    logError(source, message, ErrorSeverity::Info, ErrorCategory::Unknown, details);
+}
+
+void ErrorHandler::logWarning(const QString& source, const QString& message,
+                             const QString& details)
+{
+    logError(source, message, ErrorSeverity::Warning, ErrorCategory::Unknown, details);
+}
+
+void ErrorHandler::logCritical(const QString& source, const QString& message,
+                              const QString& details)
+{
+    logError(source, message, ErrorSeverity::Critical, ErrorCategory::Unknown, details);
 }
 
 void ErrorHandler::handleException(const std::exception& e, ErrorCategory category)
 {
-    logError(QString("Exception: %1").arg(e.what()), 
+    logError("ErrorHandler", QString("Exception: %1").arg(e.what()), 
              ErrorSeverity::Error, 
              category,
              QString("Exception type: %1").arg(typeid(e).name()));
@@ -99,7 +109,7 @@ void ErrorHandler::handleSystemError(int errorCode,
                                    const QString& operation,
                                    ErrorCategory category)
 {
-    logError(QString("System error in operation: %1").arg(operation),
+    logError("ErrorHandler", QString("System error in operation: %1").arg(operation),
              ErrorSeverity::Error,
              category,
              QString("Error code: %1").arg(errorCode));

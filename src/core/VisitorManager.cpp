@@ -36,7 +36,7 @@ VisitorManager::~VisitorManager()
 bool VisitorManager::registerVisitor(const Visitor& visitor)
 {
     if (!validateVisitorData(visitor)) {
-        LOG_ERROR("Invalid visitor data", ErrorCategory::UserInput);
+        LOG_ERROR_CAT("VisitorManager", "Invalid visitor data", ErrorCategory::UserInput);
         return false;
     }
 
@@ -105,12 +105,12 @@ bool VisitorManager::registerVisitor(const Visitor& visitor)
         }
 
         emit visitorRegistered(visitorId);
-        LOG_INFO(QString("Visitor registered successfully: %1").arg(visitorId), ErrorCategory::Database);
+        LOG_INFO("VisitorManager", QString("Visitor registered successfully: %1").arg(visitorId));
         return true;
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Failed to register visitor: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to register visitor: %1").arg(e.what()), ErrorCategory::Database);
         return false;
     }
 }
@@ -118,7 +118,7 @@ bool VisitorManager::registerVisitor(const Visitor& visitor)
 bool VisitorManager::updateVisitor(const Visitor& visitor)
 {
     if (!validateVisitorData(visitor)) {
-        LOG_ERROR("Invalid visitor data for update", ErrorCategory::UserInput);
+        LOG_ERROR_CAT("VisitorManager", "Invalid visitor data for update", ErrorCategory::UserInput);
         return false;
     }
 
@@ -176,12 +176,12 @@ bool VisitorManager::updateVisitor(const Visitor& visitor)
         }
 
         emit visitorUpdated(visitor.getId());
-        LOG_INFO(QString("Visitor updated successfully: %1").arg(visitor.getId()), ErrorCategory::Database);
+        LOG_INFO("VisitorManager", QString("Visitor updated successfully: %1").arg(visitor.getId()));
         return true;
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Failed to update visitor: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to update visitor: %1").arg(e.what()), ErrorCategory::Database);
         return false;
     }
 }
@@ -232,12 +232,12 @@ bool VisitorManager::checkInVisitor(const QString& visitorId, const QString& hos
         }
 
         emit visitorCheckedIn(visitorId);
-        LOG_INFO(QString("Visitor checked in successfully: %1").arg(visitorId), ErrorCategory::Database);
+        LOG_INFO("VisitorManager", QString("Visitor checked in successfully: %1").arg(visitorId));
         return true;
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Failed to check in visitor: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to check in visitor: %1").arg(e.what()), ErrorCategory::Database);
         return false;
     }
 }
@@ -276,12 +276,12 @@ bool VisitorManager::checkOutVisitor(const QString& visitorId)
         }
 
         emit visitorCheckedOut(visitorId);
-        LOG_INFO(QString("Visitor checked out successfully: %1").arg(visitorId), ErrorCategory::Database);
+        LOG_INFO("VisitorManager", QString("Visitor checked out successfully: %1").arg(visitorId));
         return true;
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Failed to check out visitor: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to check out visitor: %1").arg(e.what()), ErrorCategory::Database);
         return false;
     }
 }
@@ -299,14 +299,14 @@ bool VisitorManager::addToBlacklist(const QString& visitorId, const QString& rea
     query.addBindValue(QDateTime::currentDateTime());
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to add visitor to blacklist: %1").arg(query.lastError().text()), 
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to add visitor to blacklist: %1").arg(query.lastError().text()), 
                  ErrorCategory::Database);
         return false;
     }
 
     logVisitorActivity(visitorId, "BLACKLIST_ADD");
     emit blacklistUpdated();
-    LOG_INFO(QString("Visitor added to blacklist: %1").arg(visitorId), ErrorCategory::Security);
+    LOG_INFO("VisitorManager", QString("Visitor added to blacklist: %1").arg(visitorId));
     return true;
 }
 
@@ -336,11 +336,11 @@ void VisitorManager::purgeExpiredRecords()
             throw std::runtime_error("Failed to commit data purge");
         }
         
-        LOG_INFO("Expired records purged successfully", ErrorCategory::Database);
+        LOG_INFO("VisitorManager", "Expired records purged successfully");
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Data purge failed: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Data purge failed: %1").arg(e.what()), ErrorCategory::Database);
     }
 }
 
@@ -410,7 +410,7 @@ bool VisitorManager::validateVisitorData(const Visitor& visitor)
         return false;
     }
     
-    if (!visitor.getSignature().isEmpty() && !validateDataSize(visitor.getSignature(), MAX_IMAGE_SIZE)) {
+    if (!visitor.getSignature().isEmpty() && !validateDataSize(visitor.getSignature().toUtf8(), MAX_IMAGE_SIZE)) {
         ErrorHandler::getInstance().logError("VisitorManager", "Signature size exceeds maximum limit");
         return false;
     }
@@ -455,7 +455,7 @@ void VisitorManager::logVisitorActivity(const QString& visitorId, const QString&
     query.addBindValue(QDateTime::currentDateTime());
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to log visitor activity: %1").arg(query.lastError().text()), 
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to log visitor activity: %1").arg(query.lastError().text()), 
                  ErrorCategory::Database);
     }
 }
@@ -463,7 +463,7 @@ void VisitorManager::logVisitorActivity(const QString& visitorId, const QString&
 bool VisitorManager::notifyHost(const QString& hostId, const QString& message)
 {
     // TODO: Implement host notification (email, SMS, etc.)
-    LOG_INFO(QString("Host notification sent: %1 - %2").arg(hostId).arg(message), ErrorCategory::Network);
+    LOG_INFO("VisitorManager", QString("Host notification sent: %1 - %2").arg(hostId).arg(message));
     return true;
 }
 
@@ -471,11 +471,11 @@ bool VisitorManager::generateQRCode(const QString& visitorId)
 {
     try {
         // TODO: Implement QR code generation when GUI is available
-        LOG_INFO(QString("QR code generation skipped for visitor: %1").arg(visitorId), ErrorCategory::System);
+        LOG_INFO("VisitorManager", QString("QR code generation skipped for visitor: %1").arg(visitorId));
         return true;
     }
     catch (const std::exception& e) {
-        LOG_ERROR(QString("Exception in QR code generation: %1").arg(e.what()), ErrorCategory::System);
+        LOG_ERROR_CAT("VisitorManager", QString("Exception in QR code generation: %1").arg(e.what()), ErrorCategory::System);
         return false;
     }
 }
@@ -485,11 +485,11 @@ bool VisitorManager::printVisitorBadge(const QString& visitorId)
     try {
         // TODO: Implement actual badge printing
         // This could use QPrinter or a dedicated printing library
-        LOG_INFO(QString("Visitor badge printed: %1").arg(visitorId), ErrorCategory::System);
+        LOG_INFO("VisitorManager", QString("Visitor badge printed: %1").arg(visitorId));
         return true;
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to print visitor badge: %1").arg(e.what()), ErrorCategory::System);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to print visitor badge: %1").arg(e.what()), ErrorCategory::System);
         return false;
     }
 }
@@ -503,7 +503,7 @@ Visitor VisitorManager::getVisitor(const QString& visitorId)
     query.addBindValue(visitorId);
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to get visitor: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get visitor: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return Visitor();
     }
 
@@ -522,7 +522,7 @@ QList<Visitor> VisitorManager::getAllVisitors()
     query.prepare("SELECT * FROM visitors ORDER BY created_at DESC");
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to get all visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get all visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QList<Visitor>();
     }
 
@@ -550,7 +550,7 @@ QList<Visitor> VisitorManager::searchVisitors(const QString& searchTerm)
     query.addBindValue(likePattern);
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to search visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to search visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QList<Visitor>();
     }
 
@@ -573,7 +573,7 @@ QList<Visitor> VisitorManager::getCheckedInVisitors()
                  "ORDER BY vs.check_in_time DESC");
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to get checked in visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get checked in visitors: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QList<Visitor>();
     }
 
@@ -595,7 +595,7 @@ bool VisitorManager::isVisitorCheckedIn(const QString& visitorId)
     query.addBindValue(visitorId);
 
     if (!query.exec() || !query.next()) {
-        LOG_ERROR(QString("Failed to check visitor status: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to check visitor status: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return false;
     }
 
@@ -610,7 +610,7 @@ QList<QPair<QString, QString>> VisitorManager::getBlacklist()
     query.prepare("SELECT visitor_id, reason FROM blacklist ORDER BY created_at DESC");
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to get blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QList<QPair<QString, QString>>();
     }
 
@@ -634,7 +634,7 @@ bool VisitorManager::isBlacklisted(const QString& visitorId)
     query.addBindValue(visitorId);
 
     if (!query.exec() || !query.next()) {
-        LOG_ERROR(QString("Failed to check blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to check blacklist: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return false;
     }
 
@@ -656,7 +656,7 @@ void VisitorManager::logActivity(const QString& action, const QString& details, 
     query.addBindValue(QDateTime::currentDateTime());
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to log activity: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to log activity: %1").arg(query.lastError().text()), ErrorCategory::Database);
     }
 }
 
@@ -681,13 +681,13 @@ Visitor VisitorManager::createVisitorFromQuery(const QSqlQuery& query)
     QByteArray photoData = query.value("photo").toByteArray();
     if (!photoData.isEmpty()) {
         visitor.setPhoto(photoData);
-        LOG_INFO("Photo data loaded successfully", ErrorCategory::System);
+        LOG_INFO("VisitorManager", "Photo data loaded successfully");
     }
 
     QByteArray idScanData = query.value("id_scan").toByteArray();
     if (!idScanData.isEmpty()) {
         visitor.setIdScan(idScanData);
-        LOG_INFO("ID scan data loaded successfully", ErrorCategory::System);
+        LOG_INFO("VisitorManager", "ID scan data loaded successfully");
     }
 
     return visitor;
@@ -983,7 +983,7 @@ QDateTime VisitorManager::getCheckInTime(const QString& visitorId)
     query.addBindValue(visitorId);
 
     if (!query.exec() || !query.next()) {
-        LOG_ERROR(QString("Failed to get check-in time: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get check-in time: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QDateTime();
     }
 
@@ -1001,7 +1001,7 @@ QDateTime VisitorManager::getCheckOutTime(const QString& visitorId)
     query.addBindValue(visitorId);
 
     if (!query.exec() || !query.next()) {
-        LOG_ERROR(QString("Failed to get check-out time: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to get check-out time: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return QDateTime();
     }
 
@@ -1033,13 +1033,13 @@ bool VisitorManager::recordConsent(const QString& visitorId, const QString& cons
         }
 
         emit consentUpdated(visitorId, granted);
-        LOG_INFO(QString("Consent recorded for visitor: %1, type: %2, granted: %3")
-                .arg(visitorId).arg(consentType).arg(granted), ErrorCategory::Database);
+        LOG_INFO("VisitorManager", QString("Consent recorded for visitor: %1, type: %2, granted: %3")
+                .arg(visitorId).arg(consentType).arg(granted));
         return true;
     }
     catch (const std::exception& e) {
         db.rollback();
-        LOG_ERROR(QString("Failed to record consent: %1").arg(e.what()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to record consent: %1").arg(e.what()), ErrorCategory::Database);
         return false;
     }
 }
@@ -1056,7 +1056,7 @@ bool VisitorManager::hasValidConsent(const QString& visitorId, const QString& co
     query.addBindValue(consentType);
 
     if (!query.exec()) {
-        LOG_ERROR(QString("Failed to check consent: %1").arg(query.lastError().text()), ErrorCategory::Database);
+        LOG_ERROR_CAT("VisitorManager", QString("Failed to check consent: %1").arg(query.lastError().text()), ErrorCategory::Database);
         return false;
     }
 

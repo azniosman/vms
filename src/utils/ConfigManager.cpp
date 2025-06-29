@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QCoreApplication>
 #include <QRandomGenerator>
+#include <functional>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/aes.h>
@@ -80,7 +81,7 @@ ConfigManager::ConfigManager(QObject *parent)
     , watcherTimer(new QTimer(this))
     , autoSaveEnabled(false)
     , configWatcherEnabled(false)
-    , configurationChanged(false)
+    , configChanged(false)
 {
     // Setup timers
     autoSaveTimer->setSingleShot(false);
@@ -94,7 +95,7 @@ ConfigManager::ConfigManager(QObject *parent)
 
 ConfigManager::~ConfigManager()
 {
-    if (autoSaveEnabled && configurationChanged) {
+    if (autoSaveEnabled && configChanged) {
         saveConfiguration();
     }
 }
@@ -257,7 +258,7 @@ bool ConfigManager::saveConfiguration()
         
         // Update configuration hash
         configurationHash = generateConfigurationHash();
-        configurationChanged = false;
+        configChanged = false;
         
         LOG_INFO("ConfigManager", "Configuration saved successfully");
         return true;
@@ -291,23 +292,27 @@ bool ConfigManager::setValue(const QString& key, const QVariant& value)
     QMutexLocker locker(&configMutex);
     
     QStringList keyParts = key.split('.');
-    QJsonObject* current = &configData;
     
-    for (int i = 0; i < keyParts.size() - 1; ++i) {
-        const QString& part = keyParts[i];
-        if (!current->contains(part)) {
-            current->insert(part, QJsonObject());
-        }
-        
-        QJsonValue& val = (*current)[part];
-        if (!val.isObject()) {
-            val = QJsonObject();
-        }
-        current = &val.toObject();
-    }
+    // Helper function to set nested value
+    std::function<void(QJsonObject&, const QStringList&, int, const QVariant&)> setNestedValue = 
+        [&](QJsonObject& obj, const QStringList& parts, int index, const QVariant& val) {
+            if (index == parts.size() - 1) {
+                obj[parts[index]] = QJsonValue::fromVariant(val);
+                return;
+            }
+            
+            const QString& part = parts[index];
+            if (!obj.contains(part) || !obj[part].isObject()) {
+                obj[part] = QJsonObject();
+            }
+            
+            QJsonObject nested = obj[part].toObject();
+            setNestedValue(nested, parts, index + 1, val);
+            obj[part] = nested;
+        };
     
-    current->insert(keyParts.last(), QJsonValue::fromVariant(value));
-    configurationChanged = true;
+    setNestedValue(configData, keyParts, 0, value);
+    configChanged = true;
     
     emit configurationChanged(key, value);
     return true;
@@ -336,23 +341,27 @@ bool ConfigManager::setSecureValue(const QString& key, const QVariant& value)
     QMutexLocker locker(&configMutex);
     
     QStringList keyParts = key.split('.');
-    QJsonObject* current = &secureConfigData;
     
-    for (int i = 0; i < keyParts.size() - 1; ++i) {
-        const QString& part = keyParts[i];
-        if (!current->contains(part)) {
-            current->insert(part, QJsonObject());
-        }
-        
-        QJsonValue& val = (*current)[part];
-        if (!val.isObject()) {
-            val = QJsonObject();
-        }
-        current = &val.toObject();
-    }
+    // Helper function to set nested value
+    std::function<void(QJsonObject&, const QStringList&, int, const QVariant&)> setNestedValue = 
+        [&](QJsonObject& obj, const QStringList& parts, int index, const QVariant& val) {
+            if (index == parts.size() - 1) {
+                obj[parts[index]] = QJsonValue::fromVariant(val);
+                return;
+            }
+            
+            const QString& part = parts[index];
+            if (!obj.contains(part) || !obj[part].isObject()) {
+                obj[part] = QJsonObject();
+            }
+            
+            QJsonObject nested = obj[part].toObject();
+            setNestedValue(nested, parts, index + 1, val);
+            obj[part] = nested;
+        };
     
-    current->insert(keyParts.last(), QJsonValue::fromVariant(value));
-    configurationChanged = true;
+    setNestedValue(secureConfigData, keyParts, 0, value);
+    configChanged = true;
     
     emit configurationChanged(key, value);
     return true;
@@ -361,7 +370,7 @@ bool ConfigManager::setSecureValue(const QString& key, const QVariant& value)
 void ConfigManager::setupDefaults()
 {
     configData = defaultConfiguration;
-    configurationChanged = true;
+    configChanged = true;
 }
 
 QString ConfigManager::encryptValue(const QString& plaintext) const
@@ -535,7 +544,7 @@ void ConfigManager::enableAutoSave(bool enabled)
 
 void ConfigManager::onAutoSave()
 {
-    if (configurationChanged) {
+    if (configChanged) {
         saveConfiguration();
     }
 }

@@ -153,6 +153,7 @@ private:
 
 // Convenience macros
 #define LOG_ERROR(source, msg) ErrorHandler::getInstance().logError(source, msg)
+#define LOG_ERROR_CAT(source, msg, cat) ErrorHandler::getInstance().logError(source, msg, ErrorSeverity::Error, cat)
 #define LOG_WARNING(source, msg) ErrorHandler::getInstance().logWarning(source, msg)
 #define LOG_INFO(source, msg) ErrorHandler::getInstance().logInfo(source, msg)
 #define LOG_CRITICAL(source, msg) ErrorHandler::getInstance().logCritical(source, msg)

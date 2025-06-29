@@ -7,26 +7,35 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Enable GUI components
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_WIDGETS_LIB")
+# Enable console mode (disable GUI components)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_NO_WIDGETS -DQT_NO_GUI")
+
+# Threading configuration
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(CMAKE_HAVE_THREADS_LIBRARY 1)
+set(CMAKE_USE_WIN32_THREADS_INIT 0)
+set(CMAKE_USE_PTHREADS_INIT 1)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 # Security compiler flags
 if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-strong -D_FORTIFY_SOURCE=2")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wformat -Wformat-security")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now")
+    # Linux-specific security linker flags
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now")
+    endif()
 endif()
 
 # Find required Qt packages
 find_package(Qt6 REQUIRED COMPONENTS 
     Core
-    Widgets
     Sql
     Network
-    PrintSupport
 )
 
 # Find required packages
+find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Set source files
@@ -52,11 +61,11 @@ set(HEADERS
     src/reports/ReportManager.h
 )
 
-# Set resource files
-set(RESOURCES
-    resources/icons.qrc
-    resources/styles.qrc
-)
+# Set resource files (disabled for console mode)
+# set(RESOURCES
+#     resources/icons.qrc
+#     resources/styles.qrc
+# )
 
 # Create executable
 add_executable(${PROJECT_NAME} 
@@ -67,12 +76,11 @@ add_executable(${PROJECT_NAME}
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
-    Qt6::Widgets
     Qt6::Sql
     Qt6::Network
-    Qt6::PrintSupport
     OpenSSL::SSL
     OpenSSL::Crypto
+    Threads::Threads
 )
 
 # Include directories

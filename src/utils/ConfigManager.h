@@ -122,7 +122,7 @@ private:
     QTimer* watcherTimer;
     bool autoSaveEnabled;
     bool configWatcherEnabled;
-    bool configurationChanged;
+    bool configChanged;
     
     // Default values
     static const QJsonObject defaultConfiguration;

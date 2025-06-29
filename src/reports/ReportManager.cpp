@@ -95,7 +95,7 @@ ReportData ReportManager::generateReport(const ReportParameters& params)
         
     } catch (const std::exception& e) {
         QString errorMsg = QString("Failed to generate report: %1").arg(e.what());
-        LOG_ERROR(errorMsg, ErrorCategory::System);
+        LOG_ERROR_CAT("ReportManager", errorMsg, ErrorCategory::System);
         emit reportGenerationFailed(errorMsg);
         
         ReportData emptyReport;
@@ -141,7 +141,7 @@ bool ReportManager::generateAndSaveReport(const ReportParameters& params, const 
         
     } catch (const std::exception& e) {
         QString errorMsg = QString("Failed to generate and save report: %1").arg(e.what());
-        LOG_ERROR(errorMsg, ErrorCategory::FileSystem);
+        LOG_ERROR_CAT("ReportManager", errorMsg, ErrorCategory::FileSystem);
         emit reportGenerationFailed(errorMsg);
         return false;
     }
@@ -206,7 +206,7 @@ ReportData ReportManager::generateDailyVisitorLog(const QDateTime& date)
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate daily visitor log: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate daily visitor log: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -248,7 +248,7 @@ ReportData ReportManager::generateCurrentVisitorsReport()
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate current visitors report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate current visitors report: %1").arg(e.what()), 
                  ErrorCategory::System);
     }
     
@@ -312,7 +312,7 @@ ReportData ReportManager::generateVisitorFrequencyReport(const QDateTime& start,
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate visitor frequency report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate visitor frequency report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -374,7 +374,7 @@ ReportData ReportManager::generatePeakTimeAnalysis(const QDateTime& start, const
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate peak time analysis: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate peak time analysis: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -453,7 +453,7 @@ ReportData ReportManager::generateVisitDurationReport(const QDateTime& start, co
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate visit duration report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate visit duration report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -514,7 +514,7 @@ ReportData ReportManager::generateCustomerStatisticsReport(const QDateTime& star
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate customer statistics report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate customer statistics report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -558,7 +558,7 @@ ReportData ReportManager::generateSecurityIncidentsReport(const QDateTime& start
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate security incidents report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate security incidents report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -629,7 +629,7 @@ ReportData ReportManager::generateContractorTrackingReport(const QDateTime& star
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate contractor tracking report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate contractor tracking report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -668,7 +668,7 @@ ReportData ReportManager::generateEmergencyEvacuationReport()
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate emergency evacuation report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate emergency evacuation report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -756,7 +756,7 @@ ReportData ReportManager::generateComplianceReport(const QDateTime& start, const
         }
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to generate compliance report: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to generate compliance report: %1").arg(e.what()), 
                  ErrorCategory::Database);
     }
     
@@ -794,7 +794,7 @@ bool ReportManager::exportToCSV(const ReportData& report, const QString& filePat
         return true;
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to export to CSV: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to export to CSV: %1").arg(e.what()), 
                  ErrorCategory::FileSystem);
         return false;
     }
@@ -833,7 +833,7 @@ bool ReportManager::exportToJSON(const ReportData& report, const QString& filePa
         return true;
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to export to JSON: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to export to JSON: %1").arg(e.what()), 
                  ErrorCategory::FileSystem);
         return false;
     }
@@ -901,7 +901,7 @@ bool ReportManager::exportToHTML(const ReportData& report, const QString& filePa
         return true;
         
     } catch (const std::exception& e) {
-        LOG_ERROR(QString("Failed to export to HTML: %1").arg(e.what()), 
+        LOG_ERROR_CAT("ReportManager", QString("Failed to export to HTML: %1").arg(e.what()), 
                  ErrorCategory::FileSystem);
         return false;
     }
@@ -910,14 +910,14 @@ bool ReportManager::exportToHTML(const ReportData& report, const QString& filePa
 bool ReportManager::exportToPDF(const ReportData& report, const QString& filePath)
 {
     // TODO: Implement PDF export using QPrinter or a PDF library
-    LOG_WARNING("PDF export not implemented", ErrorCategory::System);
+    LOG_WARNING("ReportManager", "PDF export not implemented");
     return false;
 }
 
 bool ReportManager::exportToExcel(const ReportData& report, const QString& filePath)
 {
     // TODO: Implement Excel export using a library like OpenXLSX
-    LOG_WARNING("Excel export not implemented", ErrorCategory::System);
+    LOG_WARNING("ReportManager", "Excel export not implemented");
     return false;
 }
 
@@ -929,7 +929,7 @@ QString ReportManager::generateReportId()
 void ReportManager::saveReportToDatabase(const ReportData& report)
 {
     // TODO: Implement report saving to database
-    LOG_INFO("Report saved to database", ErrorCategory::Database);
+    LOG_INFO("ReportManager", "Report saved to database");
 }
 
 QList<ReportData> ReportManager::loadReportsFromDatabase()
@@ -981,7 +981,7 @@ QMap<QString, QVariant> ReportManager::calculateSummary(const QList<QStringList>
 void ReportManager::addChartsToReport(ReportData& report)
 {
     // TODO: Implement chart generation
-    LOG_INFO("Charts added to report", ErrorCategory::System);
+    LOG_INFO("ReportManager", "Charts added to report");
 }
 
 void ReportManager::validateReportParameters(const ReportParameters& params)

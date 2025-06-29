@@ -23,7 +23,8 @@
 #include <QTime>
 #include <QDate>
 #include <QRegularExpression>
-#include <QValidator>
+// QValidator removed for console mode
+// #include <QValidator>
 #include "Visitor.h"
 
 class VisitorManager : public QObject {

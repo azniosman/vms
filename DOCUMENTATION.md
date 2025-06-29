@@ -403,6 +403,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Support
 For support and inquiries:
-- Email: support@example.com
-- Phone: +65 XXXX XXXX
+- Email: az@azni.me
 - Documentation: See this file and README.md 
